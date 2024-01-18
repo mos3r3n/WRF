@@ -672,6 +672,11 @@ typedef vp_type real    v2                      ijk      -         1        -   
 typedef vp_type real    v3                      ijk      -         1        -       -
 typedef vp_type real    v4                      ijk      -         1        -       -
 typedef vp_type real    v5                      ijk      -         1        -       -
+typedef vp_type real    v1s                     ijk      -         1        -       -
+typedef vp_type real    v2s                     ijk      -         1        -       -
+typedef vp_type real    v3s                     ijk      -         1        -       -
+typedef vp_type real    v4s                     ijk      -         1        -       -
+typedef vp_type real    v5s                     ijk      -         1        -       -
 typedef vp_type real    v6                      ijk      -         1        -       -
 typedef vp_type real    v7                      ijk      -         1        -       -
 typedef vp_type real    v8                      ijk      -         1        -       -
@@ -688,11 +693,17 @@ typedef ep_type real    v2                      ijk9     -         1        -   
 typedef ep_type real    v3                      ijk9     -         1        -       -
 typedef ep_type real    v4                      ijk9     -         1        -       -
 typedef ep_type real    v5                      ijk9     -         1        -       -
+typedef ep_type real    v1s                     ijk9     -         1        -       -
+typedef ep_type real    v2s                     ijk9     -         1        -       -
+typedef ep_type real    v3s                     ijk9     -         1        -       -
+typedef ep_type real    v4s                     ijk9     -         1        -       -
+typedef ep_type real    v5s                     ijk9     -         1        -       -
 typedef ep_type real    cw                      ijk9     -         1        -       -
 typedef ep_type real    rn                      ijk9     -         1        -       -
 typedef ep_type real    ci                      ijk9     -         1        -       -
 typedef ep_type real    sn                      ijk9     -         1        -       -
 typedef ep_type real    gr                      ijk9     -         1        -       -
+typedef ep_type real    wa                      ijk9     -         1        -       -
 # END EP_TYPE DEFINITION
 # BEGIN XB_TYPE DEFINITION:
 typedef xb_type integer      map
