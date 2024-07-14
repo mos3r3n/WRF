@@ -1613,6 +1613,9 @@ state    real    itype          ikj     misc        1         -     hdu       "i
 state    real    itype_2          ikj     misc        1         -     hdu       "ice_type2"             "Diagnostic ice type cat 2 ISHMAEL microphysics"  ""
 state    real    itype_3          ikj     misc        1         -     hdu       "ice_type3"             "Diagnostic ice type cat 3 ISHMAEL microphysics"  ""
 
+# Microphysics output.
+
+
 # LIGHTNING NUDGING
 #state    real    ltg_dat        ij      misc        1         -      r         "ltg_dat"               "gridded lightning data"  "Flash per xkm x xkm per LAD_INT sec"
 # END LIGHTNING NUDGING
