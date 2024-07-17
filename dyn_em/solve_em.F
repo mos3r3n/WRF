@@ -3977,8 +3977,39 @@ BENCH_START(micro_driver_tim)
       &        ,pert_thom_qc=config_flags%pert_thom_qc                   &
       &        ,pert_thom_qi=config_flags%pert_thom_qi                   &
       &        ,pert_thom_qs=config_flags%pert_thom_qs                   &
-      &        ,pert_thom_ni=config_flags%pert_thom_ni  )
-                                                                          
+      &        ,pert_thom_ni=config_flags%pert_thom_ni                   &
+      &              ,prw_vcd=grid%prw_vcd                    &
+      &              ,prr_wau=grid%prr_wau                    &
+      &              ,prr_rcw=grid%prr_rcw                    &
+      &              ,prr_rcs=grid%prr_rcs                    &
+      &              ,prr_rcg=grid%prr_rcg                    &
+      &              ,prr_sml=grid%prr_sml                    & 
+      &              ,prr_gml=grid%prr_gml                    &
+      &              ,prr_rci=grid%prr_rci                    &
+      &              ,prv_rev=grid%prv_rev                    &
+      &              ,pri_inu=grid%pri_inu                    &
+      &              ,pri_ihm=grid%pri_ihm                    &
+      &              ,pri_iha=grid%pri_iha                    &
+      &              ,pri_wfz=grid%pri_wfz                    &
+      &              ,pri_rfz=grid%pri_rfz                    &
+      &              ,pri_ide=grid%pri_ide                    &
+      &              ,pri_rci=grid%pri_rci                    &
+      &              ,prs_iau=grid%prs_iau                    &
+      &              ,prs_sci=grid%prs_sci                    &
+      &              ,prs_rcs=grid%prs_rcs                    &
+      &              ,prs_scw=grid%prs_scw                    &
+      &              ,prs_sde=grid%prs_sde                    &
+      &              ,prs_ihm=grid%prs_ihm                    &
+      &              ,prs_ide=grid%prs_ide                    &
+      &              ,prg_scw=grid%prg_scw                    &
+      &              ,prg_rfz=grid%prg_rfz                    &
+      &              ,prg_gde=grid%prg_gde                    &
+      &              ,prg_gcw=grid%prg_gcw                    &
+      &              ,prg_rci=grid%prg_rci                    &
+      &              ,prg_rcs=grid%prg_rcs                    &
+      &              ,prg_rcg=grid%prg_rcg                    &
+      &              ,prg_ihm=grid%prg_ihm                    )
+                                                              
 BENCH_END(micro_driver_tim)
 
 #if 0
