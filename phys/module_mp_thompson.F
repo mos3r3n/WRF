@@ -1081,6 +1081,15 @@
                               refl_10cm, diagflag, ke_diag, do_radar_ref,      &
                               re_cloud, re_ice, re_snow,              &
                               has_reqc, has_reqi, has_reqs,           &
+							  !!! add microphysics output
+							  prw_vcd, prr_wau, prr_rcw, prr_rcs, prr_rcg,  &
+					          prr_sml, prr_gml, prr_rci, prv_rev, pri_inu,  &
+                              pri_ihm, pri_iha, pri_wfz, pri_rfz, pri_ide,  &
+					          pri_rci, prs_iau, prs_sci, prs_rcs, prs_scw,  &
+					          prs_sde, prs_ihm, prs_ide, prg_scw, prg_rfz,  &
+					          prg_gde, prg_gcw, prg_rci, prg_rcs, prg_rcg,  &
+							  prg_ihm, &
+							  !!!! EOF add microphysics output
                               ids,ide, jds,jde, kds,kde, &             ! domain dims
                               ims,ime, jms,jme, kms,kme, &             ! memory dims
                               its,ite, jts,jte, kts,kte)               ! tile dims
@@ -1112,6 +1121,14 @@
                           SNOWNC, SNOWNCV, GRAUPELNC, GRAUPELNCV
       REAL, DIMENSION(ims:ime, kms:kme, jms:jme), INTENT(INOUT)::       &
                           refl_10cm
+	  REAL, DIMENSION(ims:ime, kms:kme, jms:jme), INTENT(INOUT)::       &
+	                      prw_vcd, prr_wau, prr_rcw, prr_rcs, prr_rcg,  &
+					      prr_sml, prr_gml, prr_rci, prv_rev, pri_inu,  &
+                          pri_ihm, pri_iha, pri_wfz, pri_rfz, pri_ide,  & 
+					      pri_rci, prs_iau, prs_sci, prs_rcs, prs_scw,  &
+					      prs_sde, prs_ihm, prs_ide, prg_scw, prg_rfz,  &
+					      prg_gde, prg_gcw, prg_rci, prg_rcs, prg_rcg,  &
+						  prg_ihm
       REAL, INTENT(IN):: dt_in
       INTEGER, INTENT(IN):: itimestep
       INTEGER, OPTIONAL, INTENT(IN):: aer_init_opt, wif_input_opt
@@ -1124,6 +1141,14 @@
                           qv1d, qc1d, qi1d, qr1d, qs1d, qg1d, qb1d,     &
                           ni1d, nr1d, nc1d, ng1d, nwfa1d, nifa1d, nbca1d,&
                           t1d, p1d, w1d, dz1d, rho, dBZ
+	  DOUBLE PRECISION, DIMENSION(kts:kte) :: &
+	                      prw_vcd_1d, prr_wau_1d, prr_rcw_1d, prr_rcs_1d, prr_rcg_1d,  &
+					      prr_sml_1d, prr_gml_1d, prr_rci_1d, prv_rev_1d, pri_inu_1d,  &
+                          pri_ihm_1d, pri_iha_1d, pri_wfz_1d, pri_rfz_1d, pri_ide_1d,  & 
+					      pri_rci_1d, prs_iau_1d, prs_sci_1d, prs_rcs_1d, prs_scw_1d,  &
+					      prs_sde_1d, prs_ihm_1d, prs_ide_1d, prg_scw_1d, prg_rfz_1d,  &
+					      prg_gde_1d, prg_gcw_1d, prg_rci_1d, prg_rcs_1d, prg_rcg_1d,  &
+						  prg_ihm_1d
       REAL, DIMENSION(kts:kte):: re_qc1d, re_qi1d, re_qs1d
 #if ( WRF_CHEM == 1 )
       REAL, DIMENSION(kts:kte):: &
@@ -1152,15 +1177,6 @@
       j_start = jts
       i_end   = MIN(ite, ide-1)
       j_end   = MIN(jte, jde-1)
-
-!..For idealized testing by developer.
-!     if ( (ide-ids+1).gt.4 .and. (jde-jds+1).lt.4 .and.                &
-!          ids.eq.its.and.ide.eq.ite.and.jds.eq.jts.and.jde.eq.jte) then
-!        i_start = its + 2
-!        i_end   = ite
-!        j_start = jts
-!        j_end   = jte
-!     endif
 
       dt = dt_in
    
@@ -1289,8 +1305,46 @@
 #if ( WRF_CHEM == 1 )
                       wetscav_on, rainprod1d, evapprod1d, &
 #endif
+                      prw_vcd_1d, prr_wau_1d, prr_rcw_1d, prr_rcs_1d, prr_rcg_1d,  &
+					  prr_sml_1d, prr_gml_1d, prr_rci_1d, prv_rev_1d, pri_inu_1d,  &
+                      pri_ihm_1d, pri_iha_1d, pri_wfz_1d, pri_rfz_1d, pri_ide_1d,  &
+					  pri_rci_1d, prs_iau_1d, prs_sci_1d, prs_rcs_1d, prs_scw_1d,  &
+					  prs_sde_1d, prs_ihm_1d, prs_ide_1d, prg_scw_1d, prg_rfz_1d,  &
+					  prg_gde_1d, prg_gcw_1d, prg_rci_1d, prg_rcs_1d, prg_rcg_1d, prg_ihm_1d, &
                       kts, kte, dt, i, j)
-
+					  
+		 ! output
+		 prw_vcd(i,j,:) = real(prw_vcd_1d(:))
+		 prr_wau(i,j,:) = real(prr_wau_1d(:))
+		 prr_rcw(i,j,:) = real(prr_rcw_1d(:))
+		 prr_rcs(i,j,:) = real(prr_rcs_1d(:))
+		 prr_rcg(i,j,:) = real(prr_rcg_1d(:))
+		 prr_sml(i,j,:) = real(prr_sml_1d(:))
+		 prr_gml(i,j,:) = real(prr_gml_1d(:))
+         prv_rev(i,j,:) = real(prv_rev_1d(:))	 
+		 pri_inu(i,j,:) = real(pri_inu_1d(:))
+		 pri_ihm(i,j,:) = real(pri_ihm_1d(:))
+		 pri_iha(i,j,:) = real(pri_iha_1d(:))
+		 pri_wfz(i,j,:) = real(pri_wfz_1d(:))
+		 pri_rfz(i,j,:) = real(pri_rfz_1d(:))
+		 pri_ide(i,j,:) = real(pri_ide_1d(:))
+		 pri_rci(i,j,:) = real(pri_rci_1d(:))	 
+		 prs_iau(i,j,:) = real(prs_iau_1d(:))
+		 prs_sci(i,j,:) = real(prs_sci_1d(:))
+		 prs_rcs(i,j,:) = real(prs_rcs_1d(:))
+		 prs_scw(i,j,:) = real(prs_scw_1d(:))
+		 prs_sde(i,j,:) = real(prs_sde_1d(:))
+		 prs_ihm(i,j,:) = real(prs_ihm_1d(:))
+		 prs_ide(i,j,:) = real(prs_ide_1d(:))		 
+		 prg_scw(i,j,:) = real(prg_scw_1d(:))
+		 prg_rfz(i,j,:) = real(prg_rfz_1d(:))
+		 prg_gde(i,j,:) = real(prg_gde_1d(:))
+		 prg_gcw(i,j,:) = real(prg_gcw_1d(:))
+		 prg_rci(i,j,:) = real(prg_rci_1d(:))
+		 prg_rcs(i,j,:) = real(prg_rcs_1d(:))
+		 prg_rcg(i,j,:) = real(prg_rcg_1d(:))
+		 prg_ihm(i,j,:) = real(prg_ihm_1d(:))
+		 
          pcp_ra(i,j) = pptrain
          pcp_sn(i,j) = pptsnow
          pcp_gr(i,j) = pptgraul
@@ -1518,6 +1572,12 @@
 #if ( WRF_CHEM == 1 )
                           wetscav_on, rainprod, evapprod, &
 #endif
+                          prw_vcd, prr_wau, prr_rcw, prr_rcs, prr_rcg,  &
+						  prr_sml, prr_gml, prr_rci, prv_rev, pri_inu,  &
+                          pri_ihm, pri_iha, pri_wfz, pri_rfz, pri_ide,  &
+						  pri_rci, prs_iau, prs_sci, prs_rcs, prs_scw,  &
+						  prs_sde, prs_ihm, prs_ide, prg_scw, prg_rfz,  &
+						  prg_gde, prg_gcw, prg_rci, prg_rcs, prg_rcg, prg_ihm, &
                           kts, kte, dt, ii, jj)
 
       implicit none
@@ -1537,12 +1597,18 @@
       LOGICAL, INTENT(IN) :: wetscav_on
 #endif
 
+      DOUBLE PRECISION, DIMENSION(kts:kte), INTENT(INOUT) :: &
+	                      prw_vcd, prr_wau, prr_rcw, prr_rcs, prr_rcg,  &
+						  prr_sml, prr_gml, prr_rci, prv_rev, pri_inu,  &
+                          pri_ihm, pri_iha, pri_wfz, pri_rfz, pri_ide,  &
+						  pri_rci, prs_iau, prs_sci, prs_rcs, prs_scw,  &
+						  prs_sde, prs_ihm, prs_ide, prg_scw, prg_rfz,  &
+						  prg_gde, prg_gcw, prg_rci, prg_rcs, prg_rcg, prg_ihm   
+
 !..Local variables
       REAL, DIMENSION(kts:kte):: tten, qvten, qcten, qiten, qrten,            &
            qsten, qgten, qbten, niten, nrten, ncten, ngten, nwfaten, nifaten, &
                                                               nbcaten
-
-      DOUBLE PRECISION, DIMENSION(kts:kte):: prw_vcd
 
       DOUBLE PRECISION, DIMENSION(kts:kte):: pnc_wcd, pnc_wau, pnc_rcw, &
            pnc_scw, pnc_gcw
@@ -1550,25 +1616,13 @@
       DOUBLE PRECISION, DIMENSION(kts:kte):: pna_rca, pna_sca, pna_gca, &
            pnd_rcd, pnd_scd, pnd_gcd, pnb_rcb, pnb_scb, pnb_gcb
 
-      DOUBLE PRECISION, DIMENSION(kts:kte):: prr_wau, prr_rcw, prr_rcs, &
-           prr_rcg, prr_sml, prr_gml, &
-           prr_rci, prv_rev,          &
-           pnr_wau, pnr_rcs, pnr_rcg, &
-           pnr_rci, pnr_sml, pnr_gml, &
-           pnr_rev, pnr_rcr, pnr_rfz
+      DOUBLE PRECISION, DIMENSION(kts:kte)::  pnr_wau, pnr_rcs, pnr_rcg, &
+           pnr_rci, pnr_sml, pnr_gml, pnr_rev, pnr_rcr, pnr_rfz
 
-      DOUBLE PRECISION, DIMENSION(kts:kte):: pri_inu, pni_inu, pri_ihm, &
-           pni_ihm, pri_wfz, pni_wfz, &
-           pri_rfz, pni_rfz, pri_ide, &
-           pni_ide, pri_rci, pni_rci, &
-           pni_sci, pni_iau, pri_iha, pni_iha
+      DOUBLE PRECISION, DIMENSION(kts:kte)::  pni_ihm, pni_wfz, pni_inu, &
+           pni_rfz, pni_ide, pni_rci, pni_sci, pni_iau, pni_iha
 
-      DOUBLE PRECISION, DIMENSION(kts:kte):: prs_iau, prs_sci, prs_rcs, &
-           prs_scw, prs_sde, prs_ihm, &
-           prs_ide
-
-      DOUBLE PRECISION, DIMENSION(kts:kte):: prg_scw, prg_rfz, prg_gde, &
-           prg_gcw, prg_rci, prg_rcs, prg_rcg, prg_ihm,                 &
+      DOUBLE PRECISION, DIMENSION(kts:kte)::                &
            png_rcs, png_rcg, png_scw, png_gde,                          &
            pbg_scw, pbg_rfz, pbg_gcw, pbg_rci, pbg_rcs, pbg_rcg,        &
            pbg_sml, pbg_gml

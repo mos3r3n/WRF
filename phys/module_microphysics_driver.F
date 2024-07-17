@@ -161,6 +161,13 @@ SUBROUTINE microphysics_driver(                                          &
                       ,perts_qsnow, perts_ni                             &
                       ,pert_thom_qv,pert_thom_qc,pert_thom_qi            &
                       ,pert_thom_qs,pert_thom_ni                         &
+                      ,prw_vcd, prr_wau, prr_rcw, prr_rcs, prr_rcg       &
+                      ,prr_sml, prr_gml, prr_rci, prv_rev, pri_inu       &
+                      ,pri_ihm, pri_iha, pri_wfz, pri_rfz, pri_ide       &
+                      ,pri_rci, prs_iau, prs_sci, prs_rcs, prs_scw       &
+                      ,prs_sde, prs_ihm, prs_ide, prg_scw, prg_rfz       &
+                      ,prg_gde, prg_gcw, prg_rci, prg_rcs, prg_rcg       &
+                      ,prg_ihm                                           &
                                                                          )
 
 ! Framework
@@ -620,6 +627,13 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                                                                          vmi3d_3,di3d_3,rhopo3d_3,  & ! for Jensen ISHMAEL
                                                                          phii3d_3,       & ! for Jensen ISHMAEL
                                                                          itype,itype_2,itype_3             ! for Jensen ISHMAEL
+   REAL, OPTIONAL, DIMENSION( ims:ime , kms:kme, jms:jme ) , INTENT(OUT) :: prw_vcd, & 
+                                             prr_wau, prr_rcw, prr_rcs, prr_rcg, prr_sml, &
+                                             prr_gml, prr_rci, prv_rev, pri_inu, pri_ihm, &
+                                             pri_iha, pri_wfz, pri_rfz, pri_ide, pri_rci, &
+                                             prs_iau, prs_sci, prs_rcs, prs_scw, prs_sde, &
+                                             prs_ihm, prs_ide, prg_scw, prg_rfz, prg_gde, &
+                                             prg_gcw, prg_rci, prg_rcs, prg_rcg, prg_ihm
    LOGICAL,  OPTIONAL,   INTENT(IN   )    :: channel_switch
    REAL, OPTIONAL,  INTENT(INOUT   ) :: naer  ! aerosol number concentration (/kg)
    REAL, DIMENSION( ims:ime, jms:jme ), INTENT(INOUT) , OPTIONAL :: qnwfa2d, qnifa2d, qnbca2d, &
@@ -1104,6 +1118,37 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                      has_reqc=has_reqc,                  & ! G. Thompson
                      has_reqi=has_reqi,                  & ! G. Thompson
                      has_reqs=has_reqs,                  & ! G. Thompson
+                     prw_vcd=prw_vcd,                    &
+                     prr_wau=prr_wau,                    &
+                     prr_rcw=prr_rcw,                    &
+                     prr_rcs=prr_rcs,                    &
+                     prr_rcg=prr_rcg,                    &
+                     prr_sml=prr_sml,                    & 
+                     prr_gml=prr_gml,                    &
+                     prr_rci=prr_rci,                    &
+                     prv_rev=prv_rev,                    &
+                     pri_inu=pri_inu,                    &
+                     pri_ihm=pri_ihm,                    &
+                     pri_iha=pri_iha,                    &
+                     pri_wfz=pri_wfz,                    &
+                     pri_rfz=pri_rfz,                    &
+                     pri_ide=pri_ide,                    &
+                     pri_rci=pri_rci,                    &
+                     prs_iau=prs_iau,                    &
+                     prs_sci=prs_sci,                    &
+                     prs_rcs=prs_rcs,                    &
+                     prs_scw=prs_scw,                    &
+                     prs_sde=prs_sde,                    &
+                     prs_ihm=prs_ihm,                    &
+                     prs_ide=prs_ide,                    &
+                     prg_scw=prg_scw,                    &
+                     prg_rfz=prg_rfz,                    &
+                     prg_gde=prg_gde,                    &
+                     prg_gcw=prg_gcw,                    &
+                     prg_rci=prg_rci,                    &
+                     prg_rcs=prg_rcs,                    &
+                     prg_rcg=prg_rcg,                    &
+                     prg_ihm=prg_ihm,                    &
                  IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde, &
                  IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme, &
                  ITS=its,ITE=ite, JTS=jts,JTE=jte, KTS=kts,KTE=kte)
@@ -1199,6 +1244,37 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                      has_reqc=has_reqc,                  & ! G. Thompson 
                      has_reqi=has_reqi,                  & ! G. Thompson 
                      has_reqs=has_reqs,                  & ! G. Thompson 
+                     prw_vcd=prw_vcd,                    &
+                     prr_wau=prr_wau,                    &
+                     prr_rcw=prr_rcw,                    &
+                     prr_rcs=prr_rcs,                    &
+                     prr_rcg=prr_rcg,                    &
+                     prr_sml=prr_sml,                    &
+                     prr_gml=prr_gml,                    &
+                     prr_rci=prr_rci,                    &
+                     prv_rev=prv_rev,                    &
+                     pri_inu=pri_inu,                    &
+                     pri_ihm=pri_ihm,                    &
+                     pri_iha=pri_iha,                    &
+                     pri_wfz=pri_wfz,                    &
+                     pri_rfz=pri_rfz,                    &
+                     pri_ide=pri_ide,                    &
+                     pri_rci=pri_rci,                    &
+                     prs_iau=prs_iau,                    &
+                     prs_sci=prs_sci,                    &
+                     prs_rcs=prs_rcs,                    &
+                     prs_scw=prs_scw,                    &
+                     prs_sde=prs_sde,                    &
+                     prs_ihm=prs_ihm,                    &
+                     prs_ide=prs_ide,                    &
+                     prg_scw=prg_scw,                    &
+                     prg_rfz=prg_rfz,                    &
+                     prg_gde=prg_gde,                    &
+                     prg_gcw=prg_gcw,                    &
+                     prg_rci=prg_rci,                    &
+                     prg_rcs=prg_rcs,                    &
+                     prg_rcg=prg_rcg,                    &
+                     prg_ihm=prg_ihm,                    &
                  IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde, &
                  IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme, &
                  ITS=its,ITE=ite, JTS=jts,JTE=jte, KTS=kts,KTE=kte)
@@ -1272,6 +1348,37 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                      has_reqc=has_reqc,                  & ! G. Thompson
                      has_reqi=has_reqi,                  & ! G. Thompson
                      has_reqs=has_reqs,                  & ! G. Thompson
+                     prw_vcd=prw_vcd,                    &
+                     prr_wau=prr_wau,                    &
+                     prr_rcw=prr_rcw,                    &
+                     prr_rcs=prr_rcs,                    &
+                     prr_rcg=prr_rcg,                    &
+                     prr_sml=prr_sml,                    &
+                     prr_gml=prr_gml,                    &
+                     prr_rci=prr_rci,                    &
+                     prv_rev=prv_rev,                    &
+                     pri_inu=pri_inu,                    &
+                     pri_ihm=pri_ihm,                    &
+                     pri_iha=pri_iha,                    &
+                     pri_wfz=pri_wfz,                    &
+                     pri_rfz=pri_rfz,                    &
+                     pri_ide=pri_ide,                    &
+                     pri_rci=pri_rci,                    &
+                     prs_iau=prs_iau,                    &
+                     prs_sci=prs_sci,                    &
+                     prs_rcs=prs_rcs,                    &
+                     prs_scw=prs_scw,                    &
+                     prs_sde=prs_sde,                    &
+                     prs_ihm=prs_ihm,                    &
+                     prs_ide=prs_ide,                    &
+                     prg_scw=prg_scw,                    &
+                     prg_rfz=prg_rfz,                    &
+                     prg_gde=prg_gde,                    &
+                     prg_gcw=prg_gcw,                    &
+                     prg_rci=prg_rci,                    &
+                     prg_rcs=prg_rcs,                    &
+                     prg_rcg=prg_rcg,                    &
+                     prg_ihm=prg_ihm,                    &
                  IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde, &
                  IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme, &
                  ITS=its,ITE=ite, JTS=jts,JTE=jte, KTS=kts,KTE=kte)
