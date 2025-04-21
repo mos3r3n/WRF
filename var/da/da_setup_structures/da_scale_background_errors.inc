@@ -8,16 +8,15 @@ subroutine da_scale_background_errors ( be, it )
    real*8, allocatable, dimension(:) :: rf_len1, rf_len2, rf_len3, &
                                         rf_len4, rf_len5,          &
                                         rf_len6, rf_len7, rf_len8, &
-                                        rf_len9, rf_len10,rf_len11
+                                        rf_len9, rf_len10,rf_len11, &
+					rf_len12
 !
    integer                     :: be_rf_unit, be_print_unit
    integer  :: i, ix, jy, kz, v1_mz, v2_mz, v3_mz, v4_mz, v5_mz
    real     :: ds
 
 #if (WRF_CHEM == 1)
-   !real, allocatable, dimension(:,:,:) :: v12_val
-   real*8, allocatable, dimension(:,:) :: rf_len12
-   !integer  :: v12_mz(num_chem)
+   real*8, allocatable, dimension(:,:) :: rf_len13
    integer  :: ic
 #endif
 
@@ -143,39 +142,47 @@ subroutine da_scale_background_errors ( be, it )
        deallocate ( rf_len8 )
        deallocate ( rf_len9 )
        deallocate ( rf_len10 )
+
+       if ( use_cv_nr ) then
+          allocate ( rf_len11(1:kz) )
+          read (be_rf_unit) be%v11%val
+          read (be_rf_unit) rf_len11
+          call da_rescale_background_errors( var_scaling11(it), len_scaling11(it), &
+                                             ds, rf_len11, be % v11)
+          deallocate ( rf_len11 )
+       end if
+    end if
+    
+    if ( use_cv_w ) then
+       allocate ( rf_len12(1:kz) )
+       read (be_rf_unit) be%v12%val
+       read (be_rf_unit) rf_len12
+       call da_rescale_background_errors( var_scaling12(it), len_scaling12(it), &
+                                          ds, rf_len12, be % v12)
+       deallocate ( rf_len12 )
     end if
 
 #if (WRF_CHEM == 1)
   if (chem_cv_options >=10) then
-     !allocate ( v12_val (num_chem,1:jy,1:maxval(v12_mz(1:num_chem-1))) )
-     allocate ( rf_len12(num_chem,1:kz) )
+     allocate ( rf_len13(num_chem,1:kz) )
 
      do ic=PARAM_FIRST_SCALAR, num_chem
-        read(be_rf_unit) be % v12(ic-1) % val !!= v12_val(ic-1,:,1:v12_mz(ic-1))
+        read(be_rf_unit) be % v13(ic-1) % val 
      end do
 
      do ic=PARAM_FIRST_SCALAR, num_chem
-        read(be_rf_unit) rf_len12(ic-1,:)
+        read(be_rf_unit) rf_len13(ic-1,:)
      end do
 
      do ic=PARAM_FIRST_SCALAR, num_chem
-        call da_rescale_background_errors( var_scaling12((it-1)*(num_chem-1)+ic-1), len_scaling12((it-1)*(num_chem-1)+ic-1), & 
-                                           ds, rf_len12(ic-1,:), be % v12(ic-1) )
+        call da_rescale_background_errors( var_scaling13((it-1)*(num_chem-1)+ic-1), len_scaling13((it-1)*(num_chem-1)+ic-1), & 
+                                           ds, rf_len13(ic-1,:), be % v13(ic-1) )
      end do
 
-     deallocate ( rf_len12 )
+     deallocate ( rf_len13 )
   end if
 #endif
-
-    if ( use_cv_w ) then
-       allocate ( rf_len11(1:kz) )
-       read (be_rf_unit) be%v11%val
-       read (be_rf_unit) rf_len11
-       call da_rescale_background_errors( var_scaling11(it), len_scaling11(it), &
-                                          ds, rf_len11, be % v11)
-       deallocate ( rf_len11 )
-    end if
-
+    
    close(be_rf_unit)
    close(be_print_unit)
    call da_free_unit(be_rf_unit)

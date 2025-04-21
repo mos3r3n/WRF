@@ -63,6 +63,7 @@ subroutine da_calc_flow_dependence_xa (xa_ens, ne,  ep, vp, nobwin)
                   xa_ens%qci(i,j,k) = xa_ens % qci(i,j,k) + alpha * ep%ci(i,j,k,ii)
                   xa_ens%qsn(i,j,k) = xa_ens % qsn(i,j,k) + alpha * ep%sn(i,j,k,ii)
                   xa_ens%qgr(i,j,k) = xa_ens % qgr(i,j,k) + alpha * ep%gr(i,j,k,ii)
+		  xa_ens%qnr(i,j,k) = xa_ens % qnr(i,j,k) + alpha * ep%nr(i,j,k,ii)
                end do !i loop
             end do !j loop
          end do !k loop

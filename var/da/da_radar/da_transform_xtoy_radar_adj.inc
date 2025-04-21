@@ -90,7 +90,6 @@ subroutine da_transform_xtoy_radar_adj(grid, iv, jo_grad_y, jo_grad_x)
    rhog=400.0
    !------------------------
  
-
    allocate (model_p(iv%info(radar)%max_lev,iv%info(radar)%n1:iv%info(radar)%n2))
    allocate (model_rho(iv%info(radar)%max_lev,iv%info(radar)%n1:iv%info(radar)%n2))
    allocate (model_u(iv%info(radar)%max_lev,iv%info(radar)%n1:iv%info(radar)%n2))
@@ -111,9 +110,12 @@ subroutine da_transform_xtoy_radar_adj(grid, iv, jo_grad_y, jo_grad_x)
      allocate (model_qnr(iv%info(radar)%max_lev,iv%info(radar)%n1:iv%info(radar)%n2))
      allocate (model_qns(iv%info(radar)%max_lev,iv%info(radar)%n1:iv%info(radar)%n2))
      allocate (model_qng(iv%info(radar)%max_lev,iv%info(radar)%n1:iv%info(radar)%n2))
+   else if (use_cv_nr .and. use_radar_rnr) then
+     allocate (model_qnr(iv%info(radar)%max_lev,iv%info(radar)%n1:iv%info(radar)%n2))
+     allocate (model_qnrb(iv%info(radar)%max_lev,iv%info(radar)%n1:iv%info(radar)%n2))
    end if
    !------------------------
- 
+
    allocate (model_qsn(iv%info(radar)%max_lev,iv%info(radar)%n1:iv%info(radar)%n2))
    allocate (model_qgr(iv%info(radar)%max_lev,iv%info(radar)%n1:iv%info(radar)%n2))
    allocate (model_qv(iv%info(radar)%max_lev,iv%info(radar)%n1:iv%info(radar)%n2))
@@ -136,7 +138,9 @@ subroutine da_transform_xtoy_radar_adj(grid, iv, jo_grad_y, jo_grad_x)
    model_qgr = 0.0
    model_qv  = 0.0
    model_t   = 0.0
-
+   if (use_cv_nr .and. use_radar_rnr) then
+     model_qnr = 0.0
+   end if
 
    ! W_HALF is vertical velocity at half-sigma levels.
 
@@ -161,7 +165,12 @@ subroutine da_transform_xtoy_radar_adj(grid, iv, jo_grad_y, jo_grad_x)
         model_qnrb(1:iv%info(radar)%levels(n),n) = 0
         model_qnsb(1:iv%info(radar)%levels(n),n) = 0
         model_qngb(1:iv%info(radar)%levels(n),n) = 0
+      else if (use_cv_nr .and. use_radar_rnr) then
+        do k = 1,iv%info(radar)%levels(n)
+           model_qnrb(k,n) = amax1(iv%radar(n)%model_qnr(k), 10.)
+        end do
       end if
+
       !------------------------
 
       do k = 1,iv%info(radar)%levels(n)
@@ -203,6 +212,11 @@ subroutine da_transform_xtoy_radar_adj(grid, iv, jo_grad_y, jo_grad_x)
                if (iv % radar(n) % rgr(k) % qc >= obs_qc_pointer) then
                   model_qgr(k,n) = model_qgr(k,n) + jo_grad_y%radar(n)%rgr(k)
                end if
+	       if (use_radar_rnr .and. use_cv_nr) then
+                  if (iv % radar(n) % rnr(k) % qc >= obs_qc_pointer) then
+                      model_qnr(k,n) = model_qnr(k,n) + jo_grad_y%radar(n)%rnr(k)
+                  end if
+	       end if 
             end if
 
             if (use_radar_rqv) then
@@ -212,7 +226,6 @@ subroutine da_transform_xtoy_radar_adj(grid, iv, jo_grad_y, jo_grad_x)
                   model_t(k,n)  = model_t(k,n)  + (es_beta*es_gamma/(model_tb(k,n)+es_gamma)**2.0)*model_qvb(k,n)*jo_grad_y%radar(n)%rqv(k)
                end if
             end if
-
 
             if (use_radar_rv) then
                if (iv % radar(n) % rv(k) % qc >= obs_qc_pointer) then
@@ -233,6 +246,9 @@ subroutine da_transform_xtoy_radar_adj(grid, iv, jo_grad_y, jo_grad_x)
          jo_grad_y%radar(n)%rrn(:)= 0.0
          jo_grad_y%radar(n)%rsn(:)= 0.0
          jo_grad_y%radar(n)%rgr(:)= 0.0
+	 if (use_radar_rnr .and. use_cv_nr) then
+            jo_grad_y%radar(n)%rnr(:)= 0.0
+	 end if
       end if
       if (use_radar_rqv) then
          jo_grad_y%radar(n)%rqv(:)= 0.0
@@ -247,6 +263,9 @@ subroutine da_transform_xtoy_radar_adj(grid, iv, jo_grad_y, jo_grad_x)
       if ( cloud_cv_options >= 2 ) then
          call da_interp_lin_3d_adj (jo_grad_x % qsn, iv%info(radar), model_qsn)
          call da_interp_lin_3d_adj (jo_grad_x % qgr, iv%info(radar), model_qgr)
+	 if (use_radar_rnr .and. use_cv_nr) then
+            call da_interp_lin_3d_adj (jo_grad_x % qnr, iv%info(radar), model_qnr)
+         end if
       end if
    end if
    call da_interp_lin_3d_adj (jo_grad_x % q,   iv%info(radar), model_qv)
@@ -285,6 +304,11 @@ subroutine da_transform_xtoy_radar_adj(grid, iv, jo_grad_y, jo_grad_x)
      deallocate (model_qnrb)
      deallocate (model_qnsb)
      deallocate (model_qngb)
+   end if
+
+   if (use_cv_nr .and. use_radar_rnr) then
+     deallocate (model_qnr)
+     deallocate (model_qnrb)
    end if
 
    if (trace_use) call da_trace_exit("da_transform_xtoy_radar_adj")

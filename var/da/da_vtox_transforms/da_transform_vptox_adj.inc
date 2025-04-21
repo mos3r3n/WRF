@@ -150,6 +150,22 @@ if ( jb_factor > 0.0 ) then
          enddo
       enddo
       !$OMP END PARALLEL DO
+
+      if ( use_cv_nr ) then
+         !qnrain
+         !$OMP PARALLEL DO &
+         !$OMP PRIVATE ( ij )
+         do ij = 1 , grid%num_tiles
+            do k = kts, kte
+               do j = grid%j_start(ij), grid%j_end(ij)
+                  do i = its, ite
+                     vp%v11(i,j,k)  = vp%v11(i,j,k) + grid%xa%qnr(i,j,k)
+                  enddo
+               enddo
+            enddo
+         enddo
+         !$OMP END PARALLEL DO
+      end if ! use_cv_nr
    end if ! cloud_cv_options >=2
 
    if ( use_cv_w ) then
@@ -160,7 +176,7 @@ if ( jb_factor > 0.0 ) then
          do k = kts, kte
             do j = grid%j_start(ij), grid%j_end(ij)
                do i = its, ite
-                  vp%v11(i,j,k)  = vp%v11(i,j,k) + grid%xa%w(i,j,k)
+                  vp%v12(i,j,k)  = vp%v12(i,j,k) + grid%xa%w(i,j,k)
                enddo
             enddo
          enddo

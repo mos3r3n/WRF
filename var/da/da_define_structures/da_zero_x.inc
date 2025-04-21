@@ -28,6 +28,7 @@ subroutine da_zero_x ( x )
    x % qci(:,:,:) = 0.0
    x % qsn(:,:,:) = 0.0
    x % qgr(:,:,:) = 0.0
+   x % qnr(:,:,:) = 0.0
 
    x % tgrn(:,:) = 0.0
    x % psfc(:,:) = 0.0

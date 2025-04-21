@@ -22,6 +22,7 @@ subroutine da_add_xa (xa, xa_ens)
       xa % qci(:,:,:) = xa % qci(:,:,:) + xa_ens % qci(:,:,:)
       xa % qsn(:,:,:) = xa % qsn(:,:,:) + xa_ens % qsn(:,:,:)
       xa % qgr(:,:,:) = xa % qgr(:,:,:) + xa_ens % qgr(:,:,:)
+      xa % qnr(:,:,:) = xa % qnr(:,:,:) + xa_ens % qnr(:,:,:)
    end if
 
    xa % psfc(:,:)  = xa % psfc(:,:)  + xa_ens % psfc(:,:)

@@ -253,6 +253,44 @@ subroutine da_setup_flow_predictors_ep_format2( ix, jy, kz, ne, ep, its, ite, jt
       end do
       if ( rootproc ) close(unit=ep_unit)
 
+      if ( use_cv_w ) then
+         filename = trim(ep_dir_name(it))//'/'//'ep.W'
+         if ( rootproc ) then
+            open(unit=ep_unit, file=filename, form='unformatted', status='old', iostat=ierr)
+            if ( ierr /= 0 ) then
+               write(unit=message(1),fmt='(a,a)') ' Error opening ', trim(filename)
+               call da_error(__FILE__,__LINE__,message(1:1))
+            end if
+            read(unit=ep_unit) !varname(len=10)
+            read(unit=ep_unit) !date(len=19) 0000-00-00_00:00:00
+            read(unit=ep_unit) vardim
+            read(unit=ep_unit) ni, nj, nk, nens
+
+            if (ni /= ix .or. nj /= jy .or. nk /= kz) then
+               write(unit=message(1),fmt='(a)') &
+                  'Inconsistent grid dimensions'
+               write(unit=message(2),fmt='(a,3i6)') &
+                  ' Grid dims for ensemble grid:   ', ix, jy, kz
+               write(unit=message(3),fmt='(a,3i6)') &
+                  ' Grid dims from QVAPOR ep file: ', ni, nj, nk
+               call da_error(__FILE__,__LINE__,message(1:3))
+            end if
+
+         end if
+
+         do ie = 1, min(ne, nens)
+            if ( rootproc ) then
+               read(unit=ep_unit) temp3d_r4(1:ix,1:jy,1:kz)
+               temp3d = temp3d_r4
+            end if
+            call wrf_dm_bcast_real(temp3d, ijk)
+            te = ie + (it-1)*nens
+            ep % wa(its:ite,jts:jte,kts:kte,te) = ens_scaling_inv * &
+                                                 temp3d(its:ite,jts:jte,kts:kte)
+         end do
+         if ( rootproc ) close(unit=ep_unit)
+      end if
+
    end do ! num_fgat_time loop
 
   !  Optional include hydrometeors:
@@ -436,6 +474,43 @@ subroutine da_setup_flow_predictors_ep_format2( ix, jy, kz, ne, ep, its, ite, jt
          end do
          if ( rootproc ) close(unit=ep_unit)
 
+	 if ( use_cv_nr ) then
+	    filename = trim(ep_dir_name(it))//'/'//'ep.QNRAIN'
+            if ( rootproc ) then
+               open(unit=ep_unit, file=filename, form='unformatted', status='old', iostat=ierr)
+               if ( ierr /= 0 ) then
+                  write(unit=message(1),fmt='(a,a)') ' Error opening ', trim(filename)
+                  call da_error(__FILE__,__LINE__,message(1:1))
+               end if
+               read(unit=ep_unit) !varname(len=10)
+               read(unit=ep_unit) !date(len=19) 0000-00-00_00:00:00
+               read(unit=ep_unit) vardim
+               read(unit=ep_unit) ni, nj, nk, nens
+
+               if (ni /= ix .or. nj /= jy .or. nk /= kz) then
+                  write(unit=message(1),fmt='(a)') &
+                     'Inconsistent grid dimensions'
+                  write(unit=message(2),fmt='(a,3i6)') &
+                     ' Grid dims for ensemble grid:   ', ix, jy, kz
+                  write(unit=message(3),fmt='(a,3i6)') &
+                     ' Grid dims from QGRAUP ep file: ', ni, nj, nk
+                  call da_error(__FILE__,__LINE__,message(1:3))
+               end if
+
+            end if
+            do ie = 1, min(ne, nens)
+               if ( rootproc ) then
+                  read(unit=ep_unit) temp3d_r4(1:ix,1:jy,1:kz)
+                  temp3d = temp3d_r4
+               end if
+               call wrf_dm_bcast_real(temp3d, ijk)
+               te = ie + (it-1)*nens
+               ep % nr(its:ite,jts:jte,kts:kte,te) = ens_scaling_inv * &
+                                                     temp3d(its:ite,jts:jte,kts:kte)
+            end do
+            if ( rootproc ) close(unit=ep_unit)
+
+	 end if
       end do ! num_fgat_time*ne loop
 
    end if ! hydrometeors
@@ -459,6 +534,12 @@ subroutine da_setup_flow_predictors_ep_format2( ix, jy, kz, ne, ep, its, ite, jt
       ' Max Psfc ep: ', maxval(ep % v5(its:ite,jts:jte,1,:))
    call da_message(message(1:5))
 
+   if ( use_cv_w ) then
+      write(unit=message(1),fmt='(a,e12.5)') &
+         ' Max W    ep: ', maxval(ep % wa(its:ite,jts:jte,1,:))
+      call da_message(message(1:1))
+   end if
+
    if ( alphacv_method == alphacv_method_xa .and. alpha_hydrometeors ) then
       write(unit=message(1),fmt='(a,e12.5)') &
          ' Max QCLOUD ep: ', maxval(ep % cw(its:ite,jts:jte,:,:))
@@ -471,6 +552,11 @@ subroutine da_setup_flow_predictors_ep_format2( ix, jy, kz, ne, ep, its, ite, jt
       write(unit=message(5),fmt='(a,e12.5)') &
          ' Max QGRAUP ep: ', maxval(ep % gr(its:ite,jts:jte,:,:))
       call da_message(message(1:5))
+      if ( use_cv_nr ) then
+         write(unit=message(1),fmt='(a,e12.5)') &
+            ' Max W    ep: ', maxval(ep % nr(its:ite,jts:jte,1,:))
+         call da_message(message(1:1))
+      end if
    end if
 
    deallocate(ep_dir_name)

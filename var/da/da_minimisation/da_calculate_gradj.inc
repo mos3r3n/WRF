@@ -268,7 +268,7 @@ subroutine da_calculate_gradj(it, iter, cv_size, cv_size_jb, cv_size_je, cv_size
    !-------------------------------------------------------------------------
    if (rootproc) then
       if (it == 1 .and. iter == 0) then
-         write(unit=grad_unit,fmt='(a)')'Outer    EPS     Inner      G           Gb       Go           Ge         Gd         Gp         Gs        Gl         Gm         Gt'
+         write(unit=grad_unit,fmt='(a)')'Outer    EPS     Inner             G                  Gb              Go                  Ge         Gd         Gp         Gs        Gl         Gm         Gt'
          write(unit=grad_unit,fmt='(a)')'Iter             Iter                            '
       end if
    end if
@@ -297,7 +297,7 @@ subroutine da_calculate_gradj(it, iter, cv_size, cv_size_jb, cv_size_je, cv_size
 #endif
 
       if (rootproc) &
-         write(grad_unit,fmt='(2x,i2,1x,e10.3,2x,i4,10(1x,f10.3))') &
+         write(grad_unit,fmt='(2x,i2,1x,e10.3,2x,i4,4(1x,f17.3),6(1x,f10.3))') &
                it, eps(it), iter, gnorm_j, gnorm_jb, gnorm_jo, gnorm_je, gnorm_jd, gnorm_jp, gnorm_js, gnorm_jl, gnorm_jm, gnorm_jt
    end if
 

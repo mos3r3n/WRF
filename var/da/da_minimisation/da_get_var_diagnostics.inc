@@ -242,9 +242,12 @@ subroutine da_get_var_diagnostics(it, iv, j)
            write(unit=stdout,fmt='(a,(5f15.5))') '   var_scaling used(8)         = ', var_scaling8(it)
            write(unit=stdout,fmt='(a,(5f15.5))') '   var_scaling used(9)         = ', var_scaling9(it)
            write(unit=stdout,fmt='(a,(5f15.5))') '   var_scaling used(10)        = ', var_scaling10(it)
+	   if ( use_cv_nr ) then
+              write(unit=stdout,fmt='(a,(5f15.5))') '   var_scaling used(11)        = ', var_scaling11(it)
+	   end if
         end if
         if ( use_cv_w ) then
-           write(unit=stdout,fmt='(a,(5f15.5))') '   var_scaling used(11)        = ', var_scaling11(it)
+           write(unit=stdout,fmt='(a,(5f15.5))') '   var_scaling used(12)        = ', var_scaling12(it)
         end if
       endif
 

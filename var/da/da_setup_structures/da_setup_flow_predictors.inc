@@ -194,6 +194,28 @@ subroutine da_setup_flow_predictors( ix, jy, kz, ne, ep, its, ite, jts, jte, kts
       call wrf_dm_bcast_real(temp2d, ix*jy)
       ep % v5(its:ite,jts:jte,1,te) = ens_scaling_inv * temp2d(its:ite,jts:jte)
 
+      if ( use_cv_w ) then
+         ! W:
+	 if ( ep_format == is_r8 ) then
+            filename = trim(ep_dir_name(it))//'/'//'w'//'.e'//trim(ce)
+         else if ( ep_format == is_r4 ) then
+            filename = trim(ep_dir_name(it))//'/'//'W'//'.e'//trim(ce)
+         end if
+         if ( rootproc ) then
+            open(unit=ep_unit, file = filename, form = 'unformatted', status = 'old')
+            read(unit=ep_unit) ni, nj, nkdum
+            if ( ep_format == is_r8 ) then
+               read(unit=ep_unit) temp2d(1:ix,1:jy)
+            else if ( ep_format == is_r4 ) then
+               read(unit=ep_unit) temp2d_r4(1:ix,1:jy)
+               temp2d = temp2d_r4
+            end if
+           close(unit=ep_unit)
+         end if
+         call wrf_dm_bcast_real(temp2d, ix*jy)
+         ep % wa(its:ite,jts:jte,1,te) = ens_scaling_inv * temp2d(its:ite,jts:jte)
+      end if
+
    end do ! num_fgat_time*ne loop
 
   !  Optional include hydrometeors:
@@ -307,6 +329,27 @@ subroutine da_setup_flow_predictors( ix, jy, kz, ne, ep, its, ite, jts, jte, kts
          call wrf_dm_bcast_real(temp3d, ijk)
          ep % gr(its:ite,jts:jte,kts:kte,te) = ens_scaling_inv * temp3d(its:ite,jts:jte,kts:kte)
 
+         if ( use_cv_nr ) then
+            if ( ep_format == is_r8 ) then
+               filename = trim(ep_dir_name(it))//'/'//'qnrain'//'.e'//trim(ce)
+            else if ( ep_format == is_r4 ) then
+               filename = trim(ep_dir_name(it))//'/'//'QNRAIN'//'.e'//trim(ce)
+            end if
+            if ( rootproc ) then
+               open(unit=ep_unit, file = filename, form = 'unformatted', status = 'old')
+               read(unit=ep_unit) ni, nj, nk
+               if ( ep_format == is_r8 ) then
+                  read(unit=ep_unit) temp3d(1:ix,1:jy,1:kz)
+               else if ( ep_format == is_r4 ) then
+                  read(unit=ep_unit) temp3d_r4(1:ix,1:jy,1:kz)
+                  temp3d = temp3d_r4
+               end if
+               close(unit=ep_unit)
+            end if
+            call wrf_dm_bcast_real(temp3d, ijk)
+            ep % nr(its:ite,jts:jte,kts:kte,te) = ens_scaling_inv * temp3d(its:ite,jts:jte,kts:kte)
+	 end if
+
       end do ! num_fgat_time*ne loop
 
    end if ! hydrometeors
@@ -330,6 +373,12 @@ subroutine da_setup_flow_predictors( ix, jy, kz, ne, ep, its, ite, jts, jte, kts
       ' Max Psfc ep: ', maxval(ep % v5(its:ite,jts:jte,1,:))
    call da_message(message(1:5))
 
+   if ( use_cv_w ) then
+      write(unit=message(1),fmt='(a,e12.5)') &
+          ' Max W    ep: ', maxval(ep % wa(its:ite,jts:jte,1,:))
+      call da_message(message(1:1))
+   end if
+
    if ( alphacv_method == alphacv_method_xa .and. alpha_hydrometeors ) then
       write(unit=message(1),fmt='(a,e12.5)') &
          ' Max QCLOUD ep: ', maxval(ep % cw(its:ite,jts:jte,:,:))
@@ -342,6 +391,11 @@ subroutine da_setup_flow_predictors( ix, jy, kz, ne, ep, its, ite, jts, jte, kts
       write(unit=message(5),fmt='(a,e12.5)') &
          ' Max QGRAUP ep: ', maxval(ep % gr(its:ite,jts:jte,:,:))
       call da_message(message(1:5))
+      if ( use_cv_nr ) then
+         write(unit=message(5),fmt='(a,e12.5)') &
+            ' Max QNRAIN ep: ', maxval(ep % nr(its:ite,jts:jte,:,:))
+         call da_message(message(1:5))
+      end if
    end if
 
    deallocate(ep_dir_name)

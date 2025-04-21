@@ -13,6 +13,10 @@ subroutine da_get_innov_vector_radar (it, grid, ob, iv)
 
    implicit none
 
+#ifdef DM_PARALLEL
+   include 'mpif.h'
+#endif
+
    integer,          intent(in)    :: it       ! External iteration.
    type(domain),     intent(in)    :: grid     ! first guess state.
    type(y_type),     intent(inout) :: ob       ! Observation structure.
@@ -39,10 +43,10 @@ subroutine da_get_innov_vector_radar (it, grid, ob, iv)
 
    real, allocatable :: model_rho(:,:)
    real, allocatable :: model_qrn(:,:)
-   real, allocatable :: model_qcl(:,:)
-   real, allocatable :: model_qci(:,:)
    real, allocatable :: model_qsn(:,:)
    real, allocatable :: model_qgr(:,:)
+   real, allocatable :: model_qnr(:,:)
+   real, allocatable :: model_dbz(:,:)
 
    real    :: v_h(kms:kme)      ! Model value h at ob hor. location.
 
@@ -50,8 +54,8 @@ subroutine da_get_innov_vector_radar (it, grid, ob, iv)
    integer :: irv, irvf
    integer :: irf, irff
 
-   real    :: alog_10, czrn, czds, czws, czgr, zrn, zds, zws, zgr, rze
-   real    :: ob_radar_rf, bg_rze, bg_rf
+   real    :: alog_10, czrn, czds, czws, czgr
+   real    :: ob_radar_rf, bg_rze, bg_rf, rze
    real    :: cwr, cws ! weighting coefficient for mixing ratio
 
    ! variables for calculating cloud base
@@ -63,15 +67,32 @@ subroutine da_get_innov_vector_radar (it, grid, ob, iv)
 
    logical           :: echo_non_precip, echo_rf_good
 
+   ! variables for neighborhood no-rain scheme (radar_non_precip_opt=2)
+   integer              :: proc, i_start, i_end, itmp1, itmp2
+   integer              :: norain
+   integer              :: nk, ncount_local, ncount_sum, s
+   integer, allocatable :: ncount_all(:), rec(:)
+   integer, allocatable :: counts(:), displs(:)
+   integer, allocatable :: decrease(:), decrease_glob(:), decrease_local(:)
+   real                 :: coefa, coefb, coefc
+   real,    allocatable :: rf_local(:), i_local(:), j_local(:), z_local(:)
+   real,    allocatable :: dbz_local(:), qs_local(:), qv_local(:)
+   real,    allocatable :: rf_global(:), x_global(:), y_global(:), z_global(:)
+   real,    allocatable :: dbz_global(:), qs_global(:), qv_global(:)
+
    !--------------------------------------------------------
    !  for background-dependent hydrmeteor retrieval scheme
    !--------------------------------------------------------
    character(len=filename_len) :: hydro_weight_file
    integer              :: hydro_weight_unit
    integer              :: tot_h_index, tot_z_index 
-   integer              :: ii, jj, kk, nk
+   integer              :: ii, jj, kk
    integer              :: h_index, z_index          
-   logical              :: file_exist, qg_exist
+   logical              :: file_exist, qg_exist, use_2mom_rf
+   real                 :: n0r, am_r, crg3, crg4, pi, rhor
+   real                 :: p_r, p_ws, p_wg, p_dg, ds_para_a, ds_para_b
+   real                 :: para_r, para_ws, para_ds, para_dg, para_wg
+   real                 :: zrn, zds, zws, zgr
    real                 :: zern_ratio, zews_ratio, zeds_ratio, zegr_ratio  ! contributions of each hydrometeor to total reflectivity
    real, allocatable    :: num_sample(:,:)  ! number of samples from the background
    real, allocatable    :: avg_zern(:,:)    ! ze contributed by bin-averaged rainwater
@@ -79,10 +100,12 @@ subroutine da_get_innov_vector_radar (it, grid, ob, iv)
    real, allocatable    :: avg_zews(:,:)    ! ze contributed by bin-averaged wet snow
    real, allocatable    :: avg_zegr(:,:)    ! ze contributed by bin-averaged graupel
    real, allocatable    :: avg_qrn(:,:)     ! bin-averaged rainwater
+   real, allocatable    :: avg_qnr(:,:)     ! bin-averaged rainwater number concentration
    real, allocatable    :: avg_qds(:,:)     ! bin-averaged dry snow
    real, allocatable    :: avg_qws(:,:)     ! bin-averaged wet snow
    real, allocatable    :: avg_qgr(:,:)     ! bin-averaged graupel
-   real, allocatable    :: ave_rho(:,:)     ! bin-averaged air density
+   real, allocatable    :: avg_rho(:,:)     ! bin-averaged air density
+   real, allocatable    :: avg_tk(:,:)      ! bin-averaged air temperature (K)
 
    !------------------------
    !  for jung et al 2008
@@ -107,6 +130,24 @@ subroutine da_get_innov_vector_radar (it, grid, ob, iv)
    zds = 9.80*1.00e+8  ! dry snow
    zws = 4.26*1.00e+11 ! wet snow
    zgr = 4.33*1.00e+10 ! grauple
+
+   ! For two-moment retrieval
+   pi = 3.14159265
+   rhor = 1000.
+   p_r  = 2.0
+   p_wg = 2.5
+   p_dg = 2.5
+   p_ws = 2.67
+   para_r  = 7.295125e13
+   para_ds = 4057379571.35256
+   para_ws = 1.47e5
+   para_wg = 5.54914e12
+   para_dg = 1.90409e12
+   n0r  = 8.0e6
+   crg3 = 24.0
+   crg4 = 5040.0
+   am_r = pi * 1000. / 6.0
+   use_2mom_rf = (use_radar_rnr .and. use_cv_nr)
 
    !------------------------
    !  for jung et al 2008
@@ -133,7 +174,6 @@ subroutine da_get_innov_vector_radar (it, grid, ob, iv)
       call da_error(__FILE__,__LINE__,message(1:2))
    end if
 
-
    allocate (model_p(iv%info(radar)%max_lev,iv%info(radar)%n1:iv%info(radar)%n2))
    allocate (model_u(iv%info(radar)%max_lev,iv%info(radar)%n1:iv%info(radar)%n2))
    allocate (model_v(iv%info(radar)%max_lev,iv%info(radar)%n1:iv%info(radar)%n2))
@@ -149,14 +189,17 @@ subroutine da_get_innov_vector_radar (it, grid, ob, iv)
 
    allocate (model_rho(iv%info(radar)%max_lev,iv%info(radar)%n1:iv%info(radar)%n2))
    allocate (model_qrn(iv%info(radar)%max_lev,iv%info(radar)%n1:iv%info(radar)%n2))
-   allocate (model_qcl(iv%info(radar)%max_lev,iv%info(radar)%n1:iv%info(radar)%n2))
-   allocate (model_qci(iv%info(radar)%max_lev,iv%info(radar)%n1:iv%info(radar)%n2))
    allocate (model_qsn(iv%info(radar)%max_lev,iv%info(radar)%n1:iv%info(radar)%n2))
    allocate (model_qgr(iv%info(radar)%max_lev,iv%info(radar)%n1:iv%info(radar)%n2))
+   if (use_cv_nr) allocate (model_qnr(iv%info(radar)%max_lev,iv%info(radar)%n1:iv%info(radar)%n2))
 
    if ( use_radar_rqv ) then
       allocate (model_lcl(iv%info(radar)%n1:iv%info(radar)%n2))
       allocate (model_qs_ice(iv%info(radar)%max_lev,iv%info(radar)%n1:iv%info(radar)%n2))
+      if (radar_non_precip_opt > 0) then
+         allocate (model_dbz(iv%info(radar)%max_lev,iv%info(radar)%n1:iv%info(radar)%n2))
+         model_dbz(:,:)=-30.
+      end if
       model_qs_ice(:,:) = 0. !initialize
    end if
 
@@ -175,10 +218,9 @@ subroutine da_get_innov_vector_radar (it, grid, ob, iv)
 
    model_rho(:,:)  = 0.
    model_qrn(:,:)  = 0.
-   model_qci(:,:)  = 0.
-   model_qcl(:,:)  = 0.
    model_qsn(:,:)  = 0.
    model_qgr(:,:)  = 0.
+   if ( use_cv_nr ) model_qnr(:,:) = 0.
 
    if ( it > 1 ) then
      do n=iv%info(radar)%n1,iv%info(radar)%n2
@@ -231,12 +273,12 @@ subroutine da_get_innov_vector_radar (it, grid, ob, iv)
    call da_interp_lin_3d (grid%xb % wh,  iv%info(radar), model_w)
    call da_interp_lin_3d (grid%xb % rho, iv%info(radar), model_rho)
    call da_interp_lin_3d (grid%xb % qrn, iv%info(radar), model_qrn)
-   call da_interp_lin_3d (grid%xb % qcw, iv%info(radar), model_qcl)
-   call da_interp_lin_3d (grid%xb % qci, iv%info(radar), model_qci)
    call da_interp_lin_3d (grid%xb % qsn, iv%info(radar), model_qsn)
-IF ( ASSOCIATED( grid%xb%qgr ) ) THEN
-   call da_interp_lin_3d (grid%xb % qgr, iv%info(radar), model_qgr)
-END IF
+   IF ( ASSOCIATED( grid%xb%qgr ) ) THEN
+      call da_interp_lin_3d (grid%xb % qgr, iv%info(radar), model_qgr)
+   END IF
+
+   if ( use_cv_nr ) call da_interp_lin_3d (grid%xb % qnr, iv%info(radar), model_qnr)
    call da_interp_lin_3d (grid%xb % q,  iv%info(radar), model_qv)
    call da_interp_lin_3d (grid%xb % qs, iv%info(radar), model_qs)
    call da_interp_lin_3d (grid%xb % t,  iv%info(radar), model_tc)
@@ -247,6 +289,10 @@ END IF
       do n=iv%info(radar)%n1,iv%info(radar)%n2
          do k=1,iv%info(radar)%levels(n)
             model_qs_ice(k,n) = model_qs(k,n)*exp((2.837E6 - 2.501E6)/461.5*(1./273.15 - 1./(model_tc(k,n)+273.15)))
+	    if (radar_non_precip_opt > 0) then
+                call da_radar_rf(model_qrn(k,n),model_qsn(k,n),model_qgr(k,n),model_tc(k,n),model_rho(k,n),bg_rze)
+                model_dbz(k,n) = 10.*log10(bg_rze)
+            end if
          end do
       end do
    end if
@@ -263,7 +309,7 @@ END IF
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! background-dependent hydrometer retrieval scheme !
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   if (use_radar_rhv .and. radar_rhv_opt == 2 ) then
+   if (use_radar_rhv .and. radar_rhv_opt == 2) then
       !! allocate variables
       tot_h_index = 40  ! from 500 m to 20 km, at an interval of 500 m
       tot_z_index = 7   ! from -5 dBZ to 65 dBZ, at an interval of 10 dBZ 
@@ -275,9 +321,12 @@ END IF
       allocate (avg_qrn(tot_h_index,tot_z_index))
       allocate (avg_qds(tot_h_index,tot_z_index))
       allocate (avg_qws(tot_h_index,tot_z_index))
-      allocate (avg_qws(tot_h_index,tot_z_index))
       allocate (avg_qgr(tot_h_index,tot_z_index))
-      allocate (ave_rho(tot_h_index,tot_z_index))
+      allocate (avg_rho(tot_h_index,tot_z_index))
+      if (use_cv_nr) then
+         allocate (avg_qnr(tot_h_index,tot_z_index))
+	 allocate (avg_tk(tot_h_index,tot_z_index))
+      end if
 
       !! variable initialization
       num_sample = 0.
@@ -285,11 +334,15 @@ END IF
       avg_qws    = 0.
       avg_qds    = 0.
       avg_qgr    = 0.
-      ave_rho    = 0.
+      avg_rho    = 0.
       avg_zern   = 0.
       avg_zews   = 0.
       avg_zeds   = 0.
       avg_zegr   = 0.
+      if ( use_cv_nr ) then
+         avg_qnr = 0.
+         avg_tk = 0.
+      end if
 
       !! read historical statistics from hydro_mean.dat if available
       hydro_weight_file='hydro_mean.dat'
@@ -313,8 +366,13 @@ END IF
          do jj=jps, jpe
             do ii=ips, ipe
                !! calculate background reflectivity
-               call da_radar_rf(grid%xb%qrn(ii,jj,kk), grid%xb%qsn(ii,jj,kk), grid%xb%qgr(ii,jj,kk), &
+	       if ( use_cv_nr ) then
+                  call da_radar_rf_2mom(grid%xb%qrn(ii,jj,kk),grid%xb%qsn(ii,jj,kk),grid%xb%qgr(ii,jj,kk), &
+                                     grid%xb%qnr(ii,jj,kk),grid%xb%t(ii,jj,kk),grid%xb%rho(ii,jj,kk),bg_rze)
+	       else
+                  call da_radar_rf(grid%xb%qrn(ii,jj,kk), grid%xb%qsn(ii,jj,kk), grid%xb%qgr(ii,jj,kk), &
                                 grid%xb%t(ii,jj,kk)-273.15, grid%xb%rho(ii,jj,kk), bg_rze)
+	       end if
                bg_rf = 10.*log10(bg_rze)
                !! get the index of reflectvity
                z_index = nint(bg_rf/10.)+1
@@ -328,13 +386,17 @@ END IF
                !! Sum of the model states of different model levels and reflectivity thresholds
                if (z_index .ne. 0 ) then
                   avg_qrn(h_index,z_index)  = avg_qrn(h_index,z_index)  + grid%xb%qrn(ii,jj,kk)
+		  if ( use_cv_nr ) then
+		     avg_qnr(h_index,z_index)  = avg_qnr(h_index,z_index)  + grid%xb%qnr(ii,jj,kk)
+                     avg_tk(h_index,z_index)  = avg_tk(h_index,z_index)  + grid%xb%t(ii,jj,kk)
+		  end if
                   if ( grid%xb%t(ii,jj,kk) > 273.15 ) then
                      avg_qws(h_index,z_index) = avg_qws(h_index,z_index) + grid%xb%qsn(ii,jj,kk)
                   else
                      avg_qds(h_index,z_index) = avg_qds(h_index,z_index) + grid%xb%qsn(ii,jj,kk)
                   end if
                   avg_qgr(h_index,z_index) = avg_qgr(h_index,z_index) + grid%xb%qgr(ii,jj,kk)
-                  ave_rho(h_index,z_index) = ave_rho(h_index,z_index) + grid%xb%rho(ii,jj,kk)
+                  avg_rho(h_index,z_index) = avg_rho(h_index,z_index) + grid%xb%rho(ii,jj,kk)
                   num_sample(h_index,z_index) = num_sample(h_index,z_index) + 1.
                end if
             end do ! west-east
@@ -346,8 +408,12 @@ END IF
          do h_index=1,tot_h_index
             num_sample(h_index,z_index) = wrf_dm_sum_real(num_sample(h_index,z_index))
             if (num_sample(h_index,z_index) .gt. 0) then
-               ave_rho(h_index,z_index) = wrf_dm_sum_real(ave_rho(h_index,z_index)) / num_sample(h_index,z_index)
+               avg_rho(h_index,z_index) = wrf_dm_sum_real(avg_rho(h_index,z_index)) / num_sample(h_index,z_index)
                avg_qrn(h_index,z_index) = wrf_dm_sum_real(avg_qrn(h_index,z_index)) / num_sample(h_index,z_index)
+	       if ( use_cv_nr ) then
+                  avg_qnr(h_index,z_index) = wrf_dm_sum_real(avg_qnr(h_index,z_index)) / num_sample(h_index,z_index)
+		  avg_tk(h_index,z_index) = wrf_dm_sum_real(avg_tk(h_index,z_index)) / num_sample(h_index,z_index)
+	       end if
                avg_qws(h_index,z_index) = wrf_dm_sum_real(avg_qws(h_index,z_index)) / num_sample(h_index,z_index)
                avg_qds(h_index,z_index) = wrf_dm_sum_real(avg_qds(h_index,z_index)) / num_sample(h_index,z_index)
                avg_qgr(h_index,z_index) = wrf_dm_sum_real(avg_qgr(h_index,z_index)) / num_sample(h_index,z_index)
@@ -364,22 +430,44 @@ END IF
       do z_index=1,tot_z_index
          do h_index=1,tot_h_index
             if (num_sample(h_index,z_index) .gt. 10.) then
-               if (avg_qrn(h_index,z_index) > 0.)  & !! rain water
-                  avg_zern(h_index,z_index) =  zrn*(ave_rho(h_index,z_index)*avg_qrn(h_index,z_index))**1.75
-               if (avg_qws(h_index,z_index) > 0.)  & !! wet snow
-                  avg_zews(h_index,z_index) =  zws*(ave_rho(h_index,z_index)*avg_qws(h_index,z_index))**1.75
-               if (avg_qds(h_index,z_index) > 0.)  & !! dry snow  
-                  avg_zeds(h_index,z_index) =  zds*(ave_rho(h_index,z_index)*avg_qds(h_index,z_index))**1.75
-               if (avg_qgr(h_index,z_index) > 0.)  & !! graupel 
-                  avg_zegr(h_index,z_index) =  zgr*(ave_rho(h_index,z_index)*avg_qgr(h_index,z_index))**1.75
+	       if ( use_cv_nr ) then
+                  if (avg_qrn(h_index,z_index) > 0.) then
+                    call da_radar_rf_2mom(avg_qrn(h_index,z_index), 0., 0., avg_qnr(h_index,z_index), avg_tk(h_index,z_index), &
+                                          avg_rho(h_index,z_index), avg_zern(h_index,z_index))
+		  end if
+		  if (avg_qws(h_index,z_index) > 0. .or. avg_qds(h_index,z_index) > 0.) then
+                    call da_radar_rf_2mom(0., avg_qws(h_index,z_index) + avg_qds(h_index,z_index), 0., 0., avg_tk(h_index,z_index), &
+                                          avg_rho(h_index,z_index), avg_zeds(h_index,z_index))
+	            if (avg_tk(h_index,z_index) > 273.15) then
+                       avg_zews(h_index,z_index) = avg_zeds(h_index,z_index)
+		       avg_zeds(h_index,z_index) = 0.
+		    else
+                       avg_zeds(h_index,z_index) = avg_zeds(h_index,z_index)
+		       avg_zews(h_index,z_index) = 0.
+		    end if
+                  end if
+		  if (avg_qgr(h_index,z_index) > 0.) then
+                    call da_radar_rf_2mom(0., 0., avg_qgr(h_index,z_index), 0., avg_tk(h_index,z_index), &
+                                          avg_rho(h_index,z_index), avg_zegr(h_index,z_index))
+                  end if
+	       else
+                  if (avg_qrn(h_index,z_index) > 0.)  & !! rain water
+                     avg_zern(h_index,z_index) =  zrn*(avg_rho(h_index,z_index)*avg_qrn(h_index,z_index))**1.75
+                  if (avg_qws(h_index,z_index) > 0.)  & !! wet snow
+                     avg_zews(h_index,z_index) =  zws*(avg_rho(h_index,z_index)*avg_qws(h_index,z_index))**1.75
+                  if (avg_qds(h_index,z_index) > 0.)  & !! dry snow  
+                     avg_zeds(h_index,z_index) =  zds*(avg_rho(h_index,z_index)*avg_qds(h_index,z_index))**1.75
+                  if (avg_qgr(h_index,z_index) > 0.)  & !! graupel 
+                     avg_zegr(h_index,z_index) =  zgr*(avg_rho(h_index,z_index)*avg_qgr(h_index,z_index))**1.75
+	       end if
             end if
             if (rootproc) &
                write(unit=hydro_weight_unit, fmt='(2(i8, 2x), 4(f19.9,2x))')  z_index, h_index, &
-                     avg_zern(h_index,z_index),avg_zews(h_index,z_index), avg_zeds(h_index,z_index), avg_zegr(h_index,z_index)
+                     avg_zern(h_index,z_index), avg_zews(h_index,z_index), avg_zeds(h_index,z_index), avg_zegr(h_index,z_index)
          end do
       end do   !bottom-top
       if (rootproc) close(hydro_weight_unit)
-      if (rootproc) call da_get_unit(hydro_weight_unit)
+      if (rootproc) call da_free_unit(hydro_weight_unit)
    end if   !! use_radar_rhv .and. radar_rhv_opt == 2
 
    do n=iv%info(radar)%n1,iv%info(radar)%n2
@@ -443,10 +531,12 @@ END IF
       iv%radar(n)%model_p(1:iv%info(radar)%levels(n))   = model_p(1:iv%info(radar)%levels(n),n)
       iv%radar(n)%model_rho(1:iv%info(radar)%levels(n)) = model_rho(1:iv%info(radar)%levels(n),n)
       iv%radar(n)%model_qrn(1:iv%info(radar)%levels(n)) = model_qrn(1:iv%info(radar)%levels(n),n)
-      iv%radar(n)%model_qcl(1:iv%info(radar)%levels(n)) = model_qcl(1:iv%info(radar)%levels(n),n)
-      iv%radar(n)%model_qci(1:iv%info(radar)%levels(n)) = model_qci(1:iv%info(radar)%levels(n),n)
       iv%radar(n)%model_qsn(1:iv%info(radar)%levels(n)) = model_qsn(1:iv%info(radar)%levels(n),n)
       iv%radar(n)%model_qgr(1:iv%info(radar)%levels(n)) = model_qgr(1:iv%info(radar)%levels(n),n)
+
+      if (use_2mom_rf) then
+         iv%radar(n)%model_qnr(1:iv%info(radar)%levels(n)) = model_qnr(1:iv%info(radar)%levels(n),n)
+      end if
 
       iv%radar(n)%model_ps     = model_ps(n)
 
@@ -480,7 +570,7 @@ END IF
             zr = iv%radar(n)%height(k) - iv%radar(n)%stn_loc%elv
 
             ! identify if non-precip obs (rf = radar_non_precip_rf)
-            echo_non_precip = abs(ob%radar(n)%rf(k) - radar_non_precip_rf) < 0.1
+            echo_non_precip = (ob%radar(n)%rf(k) .le. radar_non_precip_rf .and. abs(ob % radar(n) % rf(k) - missing_r) > 1.0)
 
             ! identify if valid rf obs to process
             ! this includes the echo_non_precip case
@@ -489,7 +579,7 @@ END IF
 
             if (use_radar_rv) then
                !set qc to missing_data for rv of -999.99 (radar_non_precip_rf)
-               if ( abs(ob%radar(n)%rv(k) - radar_non_precip_rf) < 0.1 ) then
+               if ( echo_non_precip ) then
                    iv % radar(n) % rv(k) % qc = missing_data
                end if
                if (abs(iv % radar(n) % rv(k) % qc - missing_data) > 1) then
@@ -644,27 +734,61 @@ END IF
                      ob_radar_rf = min(ob_radar_rf, 65.0) ! if dBZ>65.0, set to 65.0
                      rze = 10.0**(ob_radar_rf*0.1) ! dBZ to Z
 
-                     ! Rainwater mixing ratio
+                     ! Rainwater water
                      if (czrn .gt. 0.) then
-                        iv % radar(n) % rrno(k) = exp ( log(czrn*rze/zrn)/1.75 )/model_rho(k,n)
-                        iv % radar(n) % rrn(k) % qc = 0
+		        if ( use_cv_nr ) then
+                           ! rain water mixing ratio
+                           iv % radar(n) % rrno(k) = n0r * am_r * crg3 / model_rho(k,n) * (czrn*rze*1.e-18 / (n0r*crg4))**(4./7.)
+                           iv % radar(n) % rrn(k) % qc = 0
+			   if (use_radar_rnr) then
+                              ! number concentration of rain water
+                              ! iv % radar(n) % rnro(k) = (n0r/model_rho(k,n))**0.75* (iv % radar(n) % rrno(k) / (am_r * crg3))**0.25
+                              iv % radar(n) % rnro(k) = para_r * (model_rho(k,n) *iv % radar(n) % rrno(k))**p_r / (czrn*rze*model_rho(k,n))
+                              iv % radar(n) % rnr(k) % qc = 0
+                              iv % radar(n) % rnro(k) = max(iv%radar(n)%rnro(k), 0.)
+			    end if
+			else
+                           iv % radar(n) % rrno(k) = exp ( log(czrn*rze/zrn)/1.75 )/model_rho(k,n)
+                           iv % radar(n) % rrn(k) % qc = 0
+			end if
                      end if
 
-                     ! Snow mixing ratio
+                     ! Snow
                      if ((czws+czds) .gt. 0.) then
                         if (model_tc(k,n) .gt. 0.) then
-                          iv % radar(n) % rsno(k) = exp ( log(czws*rze/zws)/1.75 )/model_rho(k,n)
-                          iv % radar(n) % rsn(k) % qc = 0
+			   if ( use_cv_nr ) then
+			      iv % radar(n) % rsno(k) = exp ( log((czds+czws)*rze/para_ws)/p_ws )/1000.
+                              iv % radar(n) % rsn(k) % qc = 0
+			   else
+                              iv % radar(n) % rsno(k) = exp ( log((czws+czds)*rze/zws)/1.75 )/model_rho(k,n)
+                              iv % radar(n) % rsn(k) % qc = 0
+			   end if
                         else
-                          iv % radar(n) % rsno(k) = exp ( log(czds*rze/zds)/1.75 )/model_rho(k,n)
-                          iv % radar(n) % rsn(k) % qc = 0
+			   if ( use_cv_nr ) then
+			      call cal_coef_wetsnow(model_tc(k,n)+273.15,ds_para_a, ds_para_b)
+                              iv % radar(n) % rsno(k) = exp ( log((czds+czws)*rze/para_ds/ds_para_a)/ds_para_b )/model_rho(k,n)*0.069
+                              iv % radar(n) % rsn(k) % qc = 0
+			   else
+                              iv % radar(n) % rsno(k) = exp ( log((czds+czws)*rze/zds)/1.75 )/model_rho(k,n)
+                              iv % radar(n) % rsn(k) % qc = 0
+			   end if
                         end if
                      end if
 
-                     ! Graupel mixing ratio
+                     ! Graupel
                      if (czgr .gt. 0.) then 
-                        iv % radar(n) % rgro(k) = exp ( log(czgr*rze/zgr)/1.75 )/model_rho(k,n)
-                        iv % radar(n) % rgr(k) % qc = 0
+		        if ( use_cv_nr ) then
+			   if (model_tc(k,n) .gt. 0.) then
+                              iv % radar(n) % rgro(k) = exp ( log(czgr*rze/para_wg/model_rho(k,n)**1.75)/p_wg)
+                              iv % radar(n) % rgr(k) % qc = 0
+			   else
+                              iv % radar(n) % rgro(k) = exp ( log(czgr*rze/para_dg/model_rho(k,n)**1.75)/p_dg)
+                              iv % radar(n) % rgr(k) % qc = 0
+			   end if
+			else
+                           iv % radar(n) % rgro(k) = exp ( log(czgr*rze/zgr)/1.75 )/model_rho(k,n)
+                           iv % radar(n) % rgr(k) % qc = 0
+			end if
                      end if
 
                      if ( radar_rhv_err_opt == 1 ) then
@@ -680,6 +804,10 @@ END IF
                         iv % radar(n) % rgr(k) % error = iv % radar(n) % rf(k) % error * iv % radar(n) % rgro(k) * alog_10/leh2
                         iv % radar(n) % rgr(k) % error = amax1(0.0005,iv % radar(n) % rgr(k) % error)
                         iv % radar(n) % rgr(k) % error = amin1( 0.001,iv % radar(n) % rgr(k) % error)
+			! rainwater number concentration
+			if ( use_2mom_rf ) then
+                           iv % radar(n) % rnr(k) % error = amax1(abs(iv % radar(n) % rrno(k) - model_qnr(k,n))*0.2, 100.)
+			end if
                      else if ( radar_rhv_err_opt == 2 ) then
                         ! use settings in the namelist
                         ! rainwater error
@@ -688,6 +816,10 @@ END IF
                         iv % radar(n) % rsn(k) % error = radar_rhv_rsn_err * 0.001 ! g/kg to kg/kg
                         ! graupel error
                         iv % radar(n) % rgr(k) % error = radar_rhv_rgr_err * 0.001 ! g/kg to kg/kg
+                        ! rainwater number concentration
+                        if ( use_2mom_rf ) then
+                           iv % radar(n) % rnr(k) % error = radar_rhv_rnr_err
+			end if
                      else
                         write(unit=message(1),fmt='(A)') "radar_rhv_err_opt should be 1 or 2"
                         call da_error(__FILE__,__LINE__,message(1:1))
@@ -704,7 +836,10 @@ END IF
                   if (iv % radar(n) % rgr(k) % qc >= obs_qc_pointer) then
                      iv % radar(n) % rgr(k) % inv = iv % radar(n) % rgro(k) - model_qgr(k,n)
                   end if
-
+		  if ( use_2mom_rf .and. iv % radar(n) % rnr(k) % qc >= obs_qc_pointer ) then 
+                     iv % radar(n) % rnr(k) % inv = iv % radar(n) % rnro(k) - model_qnr(k,n)
+		     iv % radar(n) % rnr(k) % error = iv % radar(n) % rnr(k) % error
+		  end if
                end if ! echo_rf_good check
             end if ! rhv
 
@@ -723,7 +858,7 @@ END IF
                   iv % radar(n) % rqv(k) % qc = -5
 
                   if ( echo_non_precip ) then ! ob is non-precip
-                     if ( radar_non_precip_opt > 0 ) then ! assimilate non_precip echo
+                     if ( radar_non_precip_opt == 1 ) then ! assimilate non_precip echo
 
                         if ( bg_rf >= 20.0 .and. iv%radar(n)%height(k) > model_lcl(n) ) then
                            iv % radar(n) % rqv(k) % qc = 0
@@ -746,8 +881,7 @@ END IF
                      end if
 
                   else  ! ob is precip
-                     if ( ob % radar(n) % rf(k) >= radar_saturated_rf  .and. iv%radar(n)%height(k) >= model_lcl(n) )then
-                        iv % radar(n) % rqv(k) % qc = 0
+                     if ( ob % radar(n) % rf(k) >= radar_rqv_thresh1 .and. iv%radar(n)%height(k) >= model_lcl(n) )then
 
                         if ( radar_rqv_h_lbound >= 0.0 .and. radar_rqv_h_ubound >= 0.0 ) then
                            ! height ranges for applying retrieved rqv are set in the namelist
@@ -757,24 +891,26 @@ END IF
                               iv % radar(n) % rqv(k) % qc = -5
                            end if
                         end if
-                     end if
 
-                     if (iv % radar(n) % rqv(k) % qc >= obs_qc_pointer) then
                         ! reduce rqvo for certain rf ranges
-                        if ( radar_rqv_thresh1 >= 0.0 ) then
-                           if ( ob % radar(n) % rf(k) >= radar_saturated_rf .and. &
-                                ob % radar(n) % rf(k) < radar_rqv_thresh1 ) then
-                              if ( radar_rqv_rh1 >= 0.0 ) then ! RH in percentage
-                                 iv % radar(n) % rqvo(k)= 0.01*radar_rqv_rh1*model_qs(k,n)
-                              end if
-                           end if
-                        end if
-                        if ( radar_rqv_thresh1 >= 0.0 .and. radar_rqv_thresh2 >= 0.0 .and. &
-                             radar_rqv_thresh2 >= radar_rqv_thresh1 ) then
+                        if ( radar_rqv_thresh1 >= 0.0 .and. radar_rqv_thresh2 >= 0.0 .and. radar_rqv_thresh3 >= 0.0 .and. &
+                             radar_rqv_thresh2 >= radar_rqv_thresh1 .and. radar_rqv_thresh3 >= radar_rqv_thresh2 ) then
                            if ( ob % radar(n) % rf(k) >= radar_rqv_thresh1 .and. &
                                 ob % radar(n) % rf(k) < radar_rqv_thresh2) then
-                              if ( radar_rqv_rh2 >= 0.0 ) then ! RH in percentage
+                              if ( radar_rqv_rh1 >= 0.0 ) then ! RH in percentage
+                                 iv % radar(n) % rqvo(k)= 0.01*radar_rqv_rh1*model_qs(k,n)
+				 iv % radar(n) % rqv(k) % qc = 0
+                              end if
+			   else if ( ob % radar(n) % rf(k) >= radar_rqv_thresh2 .and. &
+                                ob % radar(n) % rf(k) < radar_rqv_thresh3) then
+			      if ( radar_rqv_rh2 >= 0.0 .and. radar_rqv_rh2 >= radar_rqv_rh1) then ! RH in percentage
                                  iv % radar(n) % rqvo(k)= 0.01*radar_rqv_rh2*model_qs(k,n)
+				 iv % radar(n) % rqv(k) % qc = 0
+                              end if
+			   else if ( ob % radar(n) % rf(k) >= radar_rqv_thresh3 ) then
+			      if ( radar_rqv_rh3 >= 0.0 .and. radar_rqv_rh3 >= radar_rqv_rh2) then ! RH in percentage
+                                 iv % radar(n) % rqvo(k)= 0.01*radar_rqv_rh3*model_qs(k,n)
+				 iv % radar(n) % rqv(k) % qc = 0
                               end if
                            end if
                         end if
@@ -782,6 +918,7 @@ END IF
                         ! iv % radar(n) % rqv(k) % inv must be >= 0.0
                         iv % radar(n) % rqv(k) % inv = amax1(0.0,iv % radar(n) % rqv(k) % inv )
                         iv % radar(n) % rqv(k) % error = amax1(0.001,0.20*iv % radar(n) % rqvo(k))
+
                      end if
 
                   end if ! echo_non_precip check
@@ -792,6 +929,197 @@ END IF
          end if  ! not surface or model lid
       end do level_loop
    end do
+
+   if ( use_radar_rqv .and. radar_non_precip_opt == 2 ) then ! neighborhood no-rain scheme
+   
+      ncount_local  = 0
+
+      if ( iv%info(radar)%nlocal > 0 ) then
+         do n = iv%info(radar)%n1,iv%info(radar)%n2
+            do k = 1,iv%info(radar)%levels(n)
+               ncount_local = ncount_local + 1
+            end do
+         end do
+      end if
+
+      allocate (ncount_all(0:num_procs-1))
+#ifdef DM_PARALLEL
+      call mpi_allgather( ncount_local, 1, mpi_integer, &
+                          ncount_all,   1, mpi_integer, comm, ierr )
+#else
+      ncount_all(:) = ncount_local
+#endif
+      ncount_sum = sum(ncount_all)
+
+      allocate ( rf_local(ncount_local))
+      allocate (  i_local(ncount_local))
+      allocate (  j_local(ncount_local))
+      allocate (  z_local(ncount_local))
+      allocate (dbz_local(ncount_local))
+      allocate ( qs_local(ncount_local))
+      allocate ( qv_local(ncount_local))
+
+      if ( iv%info(radar)%nlocal > 0 ) then
+         nk = 0
+         do n = iv%info(radar)%n1,iv%info(radar)%n2
+            do k = 1,iv%info(radar)%levels(n)
+               nk = nk + 1
+               rf_local(nk)  = ob%radar(n)%rf(k)
+               i_local(nk)   = iv%info(radar)%i(k,n)
+               j_local(nk)   = iv%info(radar)%j(k,n)
+               z_local(nk)   = iv%radar(n)%height(k) - iv%radar(n)%stn_loc%elv
+               dbz_local(nk) = model_dbz(k,n)
+               qs_local(nk)  = model_qs(k,n)
+               qv_local(nk)  = model_qv(k,n)
+            end do
+         end do
+      end if
+
+      allocate ( rf_global(ncount_sum))
+      allocate (  x_global(ncount_sum))
+      allocate (  y_global(ncount_sum))
+      allocate (  z_global(ncount_sum))
+      allocate (dbz_global(ncount_sum))
+      allocate ( qs_global(ncount_sum))
+      allocate ( qv_global(ncount_sum))
+
+#ifdef DM_PARALLEL
+      allocate (counts(0:num_procs-1))
+      allocate (displs(0:num_procs-1))
+      counts(:) = ncount_all(:)
+      displs(0) = 0
+      do proc = 1, num_procs-1
+         displs(proc) = displs(proc-1) + counts(proc-1)
+      end do
+      call mpi_allgatherv( rf_local, ncount_local, true_mpi_real,     &
+                           rf_global, counts, displs, true_mpi_real, &
+                           comm, ierr )
+      call mpi_allgatherv( i_local, ncount_local, true_mpi_real,      &
+                           x_global, counts, displs, true_mpi_real,   &
+                           comm, ierr )
+      call mpi_allgatherv( j_local, ncount_local, true_mpi_real,      &
+                           y_global, counts, displs, true_mpi_real,   &
+                           comm, ierr )
+      call mpi_allgatherv( z_local, ncount_local, true_mpi_real,      &
+                           z_global, counts, displs, true_mpi_real,   &
+                           comm, ierr )
+      call mpi_allgatherv( dbz_local, ncount_local, true_mpi_real,    &
+                           dbz_global, counts, displs, true_mpi_real, &
+                           comm, ierr )
+      call mpi_allgatherv( qs_local, ncount_local, true_mpi_real,     &
+                           qs_global, counts, displs, true_mpi_real,  &
+                           comm, ierr )
+      call mpi_allgatherv( qv_local, ncount_local, true_mpi_real,     &
+                           qv_global, counts, displs, true_mpi_real,  &
+                           comm, ierr )
+#else
+       rf_global(:) =  rf_local(:)
+        x_global(:) =   i_local(:)
+        y_global(:) =   j_local(:)
+        z_global(:) =   z_local(:)
+      dbz_global(:) = dbz_local(:)
+       qs_global(:) =  qs_local(:)
+       qv_global(:) =  qv_local(:)
+#endif
+
+      deallocate ( rf_local)
+      deallocate (  i_local)
+      deallocate (  j_local)
+      deallocate (  z_local)
+      deallocate (dbz_local)
+      deallocate ( qs_local)
+      deallocate ( qv_local)
+      deallocate(ncount_all)
+      ! determine the loop indices (i_start, i_end) for each proc given ncount_sum
+      itmp1 = ncount_sum/num_procs
+      itmp2 = mod(ncount_sum, num_procs)
+      i_start = myproc * itmp1 + 1 + min(myproc, itmp2)
+      i_end   = i_start + itmp1 - 1
+      if (itmp2 > myproc) i_end = i_end + 1
+
+      coefa = (grid%dx/norain_hori_range)**2
+      coefb = (grid%dx/norain_hori_range)**2
+      coefc = (1.0/norain_vert_range)**2
+
+      allocate ( rec(ncount_sum))
+      allocate ( decrease(ncount_sum))
+      decrease(:) = 0
+      do s = i_start, i_end
+         ! if non-precip obs (rf = radar_non_precip_rf)
+         echo_non_precip = (rf_global(s) .le. radar_non_precip_rf .and. rf_global(s) .gt. missing_r)
+         if ( echo_non_precip .and. dbz_global(s) > norain_fg_dbz_thre .and. &
+	      (qv_global(s) > norain_fg_rh_thre * qs_global(s)) )then
+            i=0
+            do n = 1, ncount_sum
+               if ( ((x_global(s)-x_global(n))**2*coefa + &
+                     (y_global(s)-y_global(n))**2*coefb + &
+                     (z_global(s)-z_global(n))**2*coefc) <= 1 ) then
+                  i = i+1
+                  rec(i) = n
+               end if
+            end do
+            if ( i > 0 ) then
+               norain = 0
+               do n = 1, i
+                  if ( rf_global(rec(n)) .le. radar_non_precip_rf .and. rf_global(rec(n)) .gt. missing_r) then
+                     norain = norain + 1
+                  end if
+               end do
+               if ( float(norain)/float(i) >= norain_box_percent ) then
+                  decrease(s) = 1
+               end if
+            end if
+         end if
+      end do
+
+      deallocate (       rec)
+      deallocate ( rf_global)
+      deallocate (  x_global)
+      deallocate (  y_global)
+      deallocate (  z_global)
+      deallocate (dbz_global)
+      deallocate ( qs_global)
+      deallocate ( qv_global)
+
+      allocate (decrease_local(ncount_local))
+#ifdef DM_PARALLEL
+      allocate ( decrease_glob(ncount_sum))
+      call mpi_reduce(decrease, decrease_glob, ncount_sum, &
+                      mpi_integer, mpi_sum, root, comm, ierr)
+      call mpi_scatterv(decrease_glob, counts, displs, mpi_integer, &
+                        decrease_local, ncount_local, mpi_integer,  &
+                        root, comm, ierr)
+      deallocate (decrease_glob)
+#else
+      decrease_local = decrease
+#endif
+
+      if ( iv%info(radar)%nlocal > 0 ) then
+         nk = 0
+         do n = iv%info(radar)%n1, iv%info(radar)%n2
+            do k = 1, iv%info(radar)%levels(n)
+               nk = nk + 1 !index for decrease_local array
+               echo_non_precip = (ob%radar(n)%rf(k) .le. radar_non_precip_rf .and. ob%radar(n)%rf(k) .gt. missing_r)
+               if ( echo_non_precip .and. decrease_local(nk) == 1 .and. iv%radar(n)%height(k) > model_lcl(n) .and. &
+                    model_dbz(k,n) > norain_fg_dbz_thre .and. model_qv(k,n) > (norain_fg_rh_thre * model_qs(k,n)) ) then
+                  iv % radar(n) % rqv(k) % qc = 0
+                  iv % radar(n) % rf(k) % qc = 0
+                  iv % radar(n) % rqvo(k) = norain_rh_reduce * model_qv(k,n)
+                  iv % radar(n) % rqv(k) % inv = iv % radar(n) % rqvo(k) - model_qv(k,n)
+                  iv % radar(n) % rqv(k) % error = amax1(0.001,0.20*iv % radar(n) % rqvo(k))
+               end if
+            end do !k loop
+         end do !n1-n2 loop
+      end if !nlocal>0
+
+      deallocate (decrease)
+      deallocate (decrease_local)
+#ifdef DM_PARALLEL
+      deallocate(counts)
+      deallocate(displs)
+#endif
+
+   end if ! use_radar_rqv and radar_non_precip_opt=2
 
    !------------------------------------------------------------------------
    ! [4.0] Perform optional maximum error check:  
@@ -831,8 +1159,6 @@ END IF
 
    deallocate (model_qrn)
    deallocate (model_rho)
-   deallocate (model_qcl)
-   deallocate (model_qci)
    deallocate (model_qsn)
    deallocate (model_qgr)
 
@@ -845,15 +1171,14 @@ END IF
    if ( allocated(avg_qds) )     deallocate (avg_qds)
    if ( allocated(avg_qws) )     deallocate (avg_qws)
    if ( allocated(avg_qgr) )     deallocate (avg_qgr)
-   if ( allocated(ave_rho) )     deallocate (ave_rho)
+   if ( allocated(avg_rho) )     deallocate (avg_rho)
+   if ( allocated(avg_qnr) )     deallocate (avg_qnr)
+   if ( allocated(avg_tk) )      deallocate (avg_tk)
 
-   if ( use_radar_rqv ) then
-      deallocate (model_lcl)
-      deallocate (model_qs_ice)
-   end if
+   if ( allocated(model_lcl) )   deallocate (model_lcl)
+   if ( allocated(model_qs_ice)) deallocate (model_qs_ice)
+   if ( allocated(model_dbz) )   deallocate (model_dbz)     
 
    if (trace_use) call da_trace_exit("da_get_innov_vector_radar")
 
 end subroutine da_get_innov_vector_radar
-
-

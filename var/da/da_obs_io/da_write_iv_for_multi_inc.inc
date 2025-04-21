@@ -754,7 +754,7 @@ subroutine da_write_iv_for_multi_inc(file_index, iv)
             call da_error(__FILE__,__LINE__, &
                (/"Cannot open file "//trim(filename)/))
          end if
-         write(ounit) nobs_tot, nlev_max, use_radar_rv, use_radar_rf, use_radar_rhv, use_radar_rqv
+         write(ounit) nobs_tot, nlev_max, use_radar_rv, use_radar_rf, use_dualpol_radar, use_radar_rhv, use_radar_rqv, use_radar_rnr
       end if ! root open ounit
 
       allocate( data2d(nobs_tot, 2) )
@@ -828,6 +828,37 @@ subroutine da_write_iv_for_multi_inc(file_index, iv)
          deallocate( data3d_g )
       end if ! use_radar_rf
 
+      if ( use_dualpol_radar ) then
+         allocate( data3d(nobs_tot, nlev_max, 9) )
+         data3d = 0.0
+         do n = iv%info(radar)%n1, iv%info(radar)%n2
+            if ( .not. iv%info(radar)%proc_domain(1,n) ) cycle
+            iobs = iv%info(radar)%obs_global_index(n)
+            do k = 1 , iv%info(radar)%levels(n)
+               data3d(iobs, k, 1) = iv%radar(n)%zdr(k)%inv
+               data3d(iobs, k, 2) = iv%radar(n)%zdr(k)%qc * 1.0 !int to real
+               data3d(iobs, k, 3) = iv%radar(n)%zdr(k)%error
+               data3d(iobs, k, 4) = iv%radar(n)%kdp(k)%inv
+               data3d(iobs, k, 5) = iv%radar(n)%kdp(k)%qc * 1.0 !int to real
+               data3d(iobs, k, 6) = iv%radar(n)%kdp(k)%error
+               data3d(iobs, k, 7) = iv%radar(n)%cc(k)%inv
+               data3d(iobs, k, 8) = iv%radar(n)%cc(k)%qc * 1.0 !int to real
+               data3d(iobs, k, 9) = iv%radar(n)%cc(k)%error
+            end do
+         end do
+         allocate( data3d_g(nobs_tot, nlev_max, 9) )
+#ifdef DM_PARALLEL
+         call mpi_reduce(data3d, data3d_g, nobs_tot*nlev_max*9, true_mpi_real, mpi_sum, root, comm, ierr)
+#else
+         data3d_g = data3d
+#endif
+         deallocate( data3d )
+         if ( rootproc ) then
+            write(ounit) data3d_g
+         end if
+         deallocate( data3d_g )
+      end if
+
       if ( use_radar_rhv ) then
          allocate( data3d(nobs_tot, nlev_max, 9) )
          data3d = 0.0
@@ -858,6 +889,31 @@ subroutine da_write_iv_for_multi_inc(file_index, iv)
          end if
          deallocate( data3d_g )
       end if
+
+      if ( use_radar_rnr ) then
+         allocate( data3d(nobs_tot, nlev_max, 3) )
+         data3d = 0.0
+         do n = iv%info(radar)%n1, iv%info(radar)%n2
+            if ( .not. iv%info(radar)%proc_domain(1,n) ) cycle
+            iobs = iv%info(radar)%obs_global_index(n)
+            do k = 1 , iv%info(radar)%levels(n)
+               data3d(iobs, k, 1) = iv%radar(n)%rnr(k)%inv
+               data3d(iobs, k, 2) = iv%radar(n)%rnr(k)%qc * 1.0 !int to real
+               data3d(iobs, k, 3) = iv%radar(n)%rnr(k)%error
+            end do
+         end do
+         allocate( data3d_g(nobs_tot, nlev_max, 3) )
+#ifdef DM_PARALLEL
+         call mpi_reduce(data3d, data3d_g, nobs_tot*nlev_max*3, true_mpi_real, mpi_sum, root, comm, ierr)
+#else
+         data3d_g = data3d
+#endif
+         deallocate( data3d )
+         if ( rootproc ) then
+            write(ounit) data3d_g
+         end if
+         deallocate( data3d_g )
+      end if ! use_radar_rnr
 
       if ( use_radar_rqv ) then
          allocate( data3d(nobs_tot, nlev_max, 3) )

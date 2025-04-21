@@ -281,6 +281,13 @@ subroutine da_zero_y( iv, y, value )
 
          y % radar(n) % rv(1:nlevels) = value
          y % radar(n) % rf(1:nlevels) = value
+
+	 if ( use_dualpol_radar ) then
+            y % radar(n) % zdr(1:nlevels) = value
+	    y % radar(n) % kdp(1:nlevels) = value
+            y % radar(n) % cc(1:nlevels) = value
+	 end if
+
       end do
    end if
 

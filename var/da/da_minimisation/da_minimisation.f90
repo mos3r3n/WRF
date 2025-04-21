@@ -57,7 +57,7 @@ module da_minimisation
       satem, radar, ssmi_rv, ssmi_tb, ssmt1, ssmt2, airsr, pilot, airep,tamdar, tamdar_sfc, rain, lightning, &
       bogus, buoy, qscat,pseudo, radiance, monitor_on, max_ext_its, use_rttov_kmatrix,&
       use_crtm_kmatrix,precondition_cg, precondition_factor, use_varbc, varbc_factor, &
-      biasprep, qc_rad, num_procs, myproc, use_gpspwobs, use_rainobs, use_gpsztdobs, use_lightningobs, &
+      biasprep, qc_rad, num_procs, myproc, use_gpspwobs, use_rainobs, use_gpsztdobs, use_lightningobs, use_dualpol_radar, use_radar_rnr,&
       use_radar_rf, radar_rf_opt,radar_rf_rscl,radar_rv_rscl,use_radar_rhv,use_radar_rqv,pseudo_var, num_pseudo, &
       num_ob_indexes, num_ob_vars, npres_print, pptop, ppbot, qcstat_conv_unit, gas_constant, &
       orthonorm_gradient, its, ite, jts, jte, kts, kte, ids, ide, jds, jde, kds, kde, cp, &
@@ -65,8 +65,8 @@ module da_minimisation
       ims, ime, jms, jme, kms, kme, ips, ipe, jps, jpe, kps, kpe, fgat_rain_flags, var4d_bin_rain, freeze_varbc, &
       use_wpec, wpec_factor, use_4denvar, anal_type_hybrid_dual_res, alphacv_method, alphacv_method_xa, &
       write_detail_grad_fn, pseudo_uvtpq, lanczos_ep_filename, use_divc, divc_factor, use_radarobs, &
-      cloud_cv_options, use_cv_w, var_scaling6, var_scaling7, var_scaling8, var_scaling9, &
-      var_scaling10, var_scaling11, &
+      cloud_cv_options, use_cv_w, use_cv_nr, var_scaling6, var_scaling7, var_scaling8, var_scaling9, &
+      var_scaling10, var_scaling11, var_scaling12, &
       write_gts_omb_oma, write_unpert_obs, write_rej_obs_conv, pseudo_time, &
       use_varbc_tamdar, varbc_tamdar_nobsmin, varbc_tamdar_unit
    use da_define_structures, only : iv_type, y_type,  j_type, be_type, &

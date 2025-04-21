@@ -19,8 +19,8 @@ subroutine da_calc_flow_dependence_xa_dual_res (grid, xa_ens, ne,  ep, vp, nobwi
    integer                              :: iobwin, ii
    real, allocatable, dimension(:,:,:)  :: ens_contrib_u, ens_contrib_v, ens_contrib_t, ens_contrib_q, ens_contrib_p
    real, allocatable, dimension(:,:,:)  :: output_u,output_v,output_t,output_q, output_p
-   real, allocatable, dimension(:,:,:)  :: ens_contrib_qcw, ens_contrib_qrn, ens_contrib_qci, ens_contrib_qsn, ens_contrib_qgr
-   real, allocatable, dimension(:,:,:)  :: output_qcw, output_qrn, output_qci, output_qsn, output_qgr
+   real, allocatable, dimension(:,:,:)  :: ens_contrib_qcw, ens_contrib_qrn, ens_contrib_qci, ens_contrib_qsn, ens_contrib_qgr, ens_contrib_qnr
+   real, allocatable, dimension(:,:,:)  :: output_qcw, output_qrn, output_qci, output_qsn, output_qgr, output_qnr
 
    integer  :: cids, cide, ckds, ckde, cjds, cjde, &
                cims, cime, ckms, ckme, cjms, cjme, &
@@ -71,6 +71,7 @@ subroutine da_calc_flow_dependence_xa_dual_res (grid, xa_ens, ne,  ep, vp, nobwi
       allocate( ens_contrib_qci(cims:cime,cjms:cjme,ckms:ckme) )
       allocate( ens_contrib_qsn(cims:cime,cjms:cjme,ckms:ckme) )
       allocate( ens_contrib_qgr(cims:cime,cjms:cjme,ckms:ckme) )
+      allocate( ens_contrib_qnr(cims:cime,cjms:cjme,ckms:ckme) )
    end if
 
    ! Output: Ensemble contribution to increment interpolated to hi-res domain
@@ -86,6 +87,7 @@ subroutine da_calc_flow_dependence_xa_dual_res (grid, xa_ens, ne,  ep, vp, nobwi
       allocate( output_qci(nims:nime,njms:njme,nkms:nkme) )
       allocate( output_qsn(nims:nime,njms:njme,nkms:nkme) )
       allocate( output_qgr(nims:nime,njms:njme,nkms:nkme) )
+      allocate( output_qnr(nims:nime,njms:njme,nkms:nkme) )
    end if
 
    ens_contrib_u = 0.
@@ -100,6 +102,7 @@ subroutine da_calc_flow_dependence_xa_dual_res (grid, xa_ens, ne,  ep, vp, nobwi
       ens_contrib_qci = 0.
       ens_contrib_qsn = 0.
       ens_contrib_qgr = 0.
+      ens_contrib_qnr = 0.
    end if
 
    output_u = 0.
@@ -114,6 +117,7 @@ subroutine da_calc_flow_dependence_xa_dual_res (grid, xa_ens, ne,  ep, vp, nobwi
       output_qci = 0.
       output_qsn = 0.
       output_qgr = 0.
+      output_qnr = 0.
    end if
 
    !
@@ -149,6 +153,7 @@ subroutine da_calc_flow_dependence_xa_dual_res (grid, xa_ens, ne,  ep, vp, nobwi
                   ens_contrib_qci(i,j,k) = ens_contrib_qci(i,j,k) + alpha * ep%ci(i,j,k,ii)
                   ens_contrib_qsn(i,j,k) = ens_contrib_qsn(i,j,k) + alpha * ep%sn(i,j,k,ii)
                   ens_contrib_qgr(i,j,k) = ens_contrib_qgr(i,j,k) + alpha * ep%gr(i,j,k,ii)
+		  ens_contrib_qnr(i,j,k) = ens_contrib_qnr(i,j,k) + alpha * ep%nr(i,j,k,ii)
                end do !i loop
             end do !j loop
          end do !k loop
@@ -295,6 +300,17 @@ if ( alpha_hydrometeors ) then
          cims, cime, cjms, cjme, ckms, ckme,                     &
          cips, cipe, cjps, cjpe, ckps, ckpe    )
       ENDIF
+      IF ( SIZE(ens_contrib_qnr,1)*SIZE(ens_contrib_qnr,2) .GT. 1 ) THEN
+         CALL RSL_LITE_PACK ( local_communicator,                &
+         ens_contrib_qnr, stenwidth,                             &
+         rsl_sendbeg_m, rsl_sendw_m, rsl_sendbeg_p, rsl_sendw_p, &
+         rsl_recvbeg_m, rsl_recvw_m, rsl_recvbeg_p, rsl_recvw_p, &
+         RWORDSIZE, 0, 0, DATA_ORDER_XYZ, 0,                     &
+         myproc, ntasks, ntasks_x, ntasks_y,                     &
+         cids, cide, cjds, cjde, ckds, ckde,                     &
+         cims, cime, cjms, cjme, ckms, ckme,                     &
+         cips, cipe, cjps, cjpe, ckps, ckpe    )
+      ENDIF
 end if ! alpha_hydrometeors
 
      CALL RSL_LITE_EXCH_Y ( local_communicator , myproc, ntasks, ntasks_x, ntasks_y, &
@@ -403,6 +419,17 @@ if ( alpha_hydrometeors ) then
       IF ( SIZE(ens_contrib_qgr,1)*SIZE(ens_contrib_qgr,2) .GT. 1 ) THEN
          CALL RSL_LITE_PACK ( local_communicator,                &
          ens_contrib_qgr, stenwidth,                             &
+         rsl_sendbeg_m, rsl_sendw_m, rsl_sendbeg_p, rsl_sendw_p, &
+         rsl_recvbeg_m, rsl_recvw_m, rsl_recvbeg_p, rsl_recvw_p, &
+         RWORDSIZE, 0, 1, DATA_ORDER_XYZ, 0,                     &
+         myproc, ntasks, ntasks_x, ntasks_y,                     &
+         cids, cide, cjds, cjde, ckds, ckde,                     &
+         cims, cime, cjms, cjme, ckms, ckme,                     &
+         cips, cipe, cjps, cjpe, ckps, ckpe    )
+      ENDIF
+      IF ( SIZE(ens_contrib_qnr,1)*SIZE(ens_contrib_qnr,2) .GT. 1 ) THEN
+         CALL RSL_LITE_PACK ( local_communicator,                &
+         ens_contrib_qnr, stenwidth,                             &
          rsl_sendbeg_m, rsl_sendw_m, rsl_sendbeg_p, rsl_sendw_p, &
          rsl_recvbeg_m, rsl_recvw_m, rsl_recvbeg_p, rsl_recvw_p, &
          RWORDSIZE, 0, 1, DATA_ORDER_XYZ, 0,                     &
@@ -541,6 +568,17 @@ if ( alpha_hydrometeors ) then
          cims, cime, cjms, cjme, ckms, ckme,                     &
          cips, cipe, cjps, cjpe, ckps, ckpe    )
       ENDIF
+      IF ( SIZE(ens_contrib_qnr,1)*SIZE(ens_contrib_qnr,2) .GT. 1 ) THEN
+         CALL RSL_LITE_PACK ( local_communicator,                &
+         ens_contrib_qnr, stenwidth,                             &
+         rsl_sendbeg_m, rsl_sendw_m, rsl_sendbeg_p, rsl_sendw_p, &
+         rsl_recvbeg_m, rsl_recvw_m, rsl_recvbeg_p, rsl_recvw_p, &
+         RWORDSIZE, 1, 0, DATA_ORDER_XYZ, 0,                     &
+         myproc, ntasks, ntasks_x, ntasks_y,                     &
+         cids, cide, cjds, cjde, ckds, ckde,                     &
+         cims, cime, cjms, cjme, ckms, ckme,                     &
+         cips, cipe, cjps, cjpe, ckps, ckpe    )
+      ENDIF
 end if ! alpha_hydrometeors
 
      CALL RSL_LITE_EXCH_X ( local_communicator , myproc, ntasks, ntasks_x, ntasks_y, &
@@ -657,6 +695,17 @@ if ( alpha_hydrometeors ) then
          cims, cime, cjms, cjme, ckms, ckme,                     &
          cips, cipe, cjps, cjpe, ckps, ckpe    )
       ENDIF
+      IF ( SIZE(ens_contrib_qnr,1)*SIZE(ens_contrib_qnr,2) .GT. 1 ) THEN
+         CALL RSL_LITE_PACK ( local_communicator,                &
+         ens_contrib_qnr, stenwidth,                             &
+         rsl_sendbeg_m, rsl_sendw_m, rsl_sendbeg_p, rsl_sendw_p, &
+         rsl_recvbeg_m, rsl_recvw_m, rsl_recvbeg_p, rsl_recvw_p, &
+         RWORDSIZE, 1, 1, DATA_ORDER_XYZ, 0,                     &
+         myproc, ntasks, ntasks_x, ntasks_y,                     &
+         cids, cide, cjds, cjde, ckds, ckde,                     &
+         cims, cime, cjms, cjme, ckms, ckme,                     &
+         cips, cipe, cjps, cjpe, ckps, ckpe    )
+      ENDIF
 end if ! alpha_hydrometeors
    END DO
 
@@ -744,6 +793,11 @@ end if ! alpha_hydrometeors
                    + aens_locs(i,j)%dx*ens_contrib_qgr(aens_locs(i,j)%i+1,aens_locs(i,j)%j,k))                     &
                    + aens_locs(i,j)%dy *(aens_locs(i,j)%dxm*ens_contrib_qgr(aens_locs(i,j)%i,aens_locs(i,j)%j+1,k) &
                    + aens_locs(i,j)%dx*ens_contrib_qgr(aens_locs(i,j)%i+1,aens_locs(i,j)%j+1,k))
+	       output_qnr(i,j,k) =                                                                                 &
+                     aens_locs(i,j)%dym*(aens_locs(i,j)%dxm*ens_contrib_qnr(aens_locs(i,j)%i,aens_locs(i,j)%j,k)   &
+                   + aens_locs(i,j)%dx*ens_contrib_qnr(aens_locs(i,j)%i+1,aens_locs(i,j)%j,k))                     &
+                   + aens_locs(i,j)%dy *(aens_locs(i,j)%dxm*ens_contrib_qnr(aens_locs(i,j)%i,aens_locs(i,j)%j+1,k) &
+                   + aens_locs(i,j)%dx*ens_contrib_qnr(aens_locs(i,j)%i+1,aens_locs(i,j)%j+1,k))
             end do
          end do
       end do
@@ -787,6 +841,7 @@ end if ! alpha_hydrometeors
                xa_ens%qci(i,j,k) = xa_ens%qci(i,j,k) + output_qci(i,j,k)
                xa_ens%qsn(i,j,k) = xa_ens%qsn(i,j,k) + output_qsn(i,j,k)
                xa_ens%qgr(i,j,k) = xa_ens%qgr(i,j,k) + output_qgr(i,j,k)
+	       xa_ens%qnr(i,j,k) = xa_ens%qnr(i,j,k) + output_qnr(i,j,k)
             end do
          end do
       end do
@@ -799,8 +854,8 @@ end if ! alpha_hydrometeors
    deallocate(ens_contrib_u,ens_contrib_v,ens_contrib_t,ens_contrib_q,ens_contrib_p)
    deallocate(output_u,output_v,output_t,output_q,output_p)
    if ( alpha_hydrometeors ) then
-      deallocate(ens_contrib_qcw,ens_contrib_qrn,ens_contrib_qci,ens_contrib_qsn,ens_contrib_qgr)
-      deallocate(output_qcw,output_qrn,output_qci,output_qsn,output_qgr)
+      deallocate(ens_contrib_qcw,ens_contrib_qrn,ens_contrib_qci,ens_contrib_qsn,ens_contrib_qgr,ens_contrib_qnr)
+      deallocate(output_qcw,output_qrn,output_qci,output_qsn,output_qgr,output_qnr)
    end if
 
    if (trace_use) call da_trace_exit("da_calc_flow_dependence_xa_dual_res")

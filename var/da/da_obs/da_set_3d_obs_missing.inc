@@ -23,8 +23,11 @@ subroutine da_set_3d_obs_missing (iv, n)
          if ( iv%info(n)%thinned(k,i) ) then
             iv%radar(i)%height(k) = missing_r
             iv%radar(i)%height_qc(k) = missing_data
-            iv%radar(i)%rv(k) = field_type(missing_r, missing_data, xmiss, missing_r, missing_r)
-            iv%radar(i)%rf(k) = field_type(missing_r, missing_data, xmiss, missing_r, missing_r)
+            iv%radar(i)%rv(k)  = field_type(missing_r, missing_data, xmiss, missing_r, missing_r)
+            iv%radar(i)%rf(k)  = field_type(missing_r, missing_data, xmiss, missing_r, missing_r)
+	    iv%radar(i)%zdr(k) = field_type(missing_r, missing_data, xmiss, missing_r, missing_r)
+            iv%radar(i)%kdp(k) = field_type(missing_r, missing_data, xmiss, missing_r, missing_r)
+	    iv%radar(i)%cc(k)  = field_type(missing_r, missing_data, xmiss, missing_r, missing_r)
          end if
         end do
       end do

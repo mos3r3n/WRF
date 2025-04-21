@@ -188,6 +188,11 @@ subroutine da_transfer_xatowrf_nmm_regional(grid)
                grid%moist(i,j,k,p_qg) = grid%moist(i,j,k,p_qg) + grid%xa%qgr(i,j,k)
                if (grid%moist(i,j,k,p_qg) < 0.0) grid%moist(i,j,k,p_qg) = 0.0
             end if
+
+	    if (size(grid%scalar,dim=4) >= 3 .and. cloud_cv_options >= 2 .and. use_cv_nr) then
+               grid%scalar(i,j,k,p_qnr) = max(grid%scalar(i,j,k,p_qnr) + grid%xa%qnr(i,j,k), 0.0)
+            end if
+
          end do
       end do
    end do

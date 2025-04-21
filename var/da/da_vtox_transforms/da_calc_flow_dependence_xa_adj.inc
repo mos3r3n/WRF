@@ -35,6 +35,7 @@ subroutine da_calc_flow_dependence_xa_adj (ne, ep, xa, vp, nobwin)
             do j = jte, jts, -1
                do i = ite, its, -1
                   alpha = 0.0
+		  alpha = alpha + ep % nr(i,j,k,ii) * xa % qnr(i,j,k)
                   alpha = alpha + ep % gr(i,j,k,ii) * xa % qgr(i,j,k)
                   alpha = alpha + ep % sn(i,j,k,ii) * xa % qsn(i,j,k)
                   alpha = alpha + ep % ci(i,j,k,ii) * xa % qci(i,j,k)

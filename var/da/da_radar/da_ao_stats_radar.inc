@@ -11,7 +11,7 @@ subroutine da_ao_stats_radar (stats_unit, iv, re)
    type (y_type),  intent (in)    :: re            ! A - O
 
    type (stats_radar_type) :: stats
-   integer                 :: nrv, nrf, nrrn, nrsn, nrgr,nrqv
+   integer                 :: nrv, nrf, nrrn, nrsn, nrgr,nrqv,nrnr
    integer                 :: n, k
 
    if (trace_use) call da_trace_entry("da_ao_stats_radar")
@@ -19,6 +19,7 @@ subroutine da_ao_stats_radar (stats_unit, iv, re)
    nrv = 0
    nrf = 0
    nrrn= 0
+   nrnr= 0
    nrsn= 0
    nrgr= 0
    nrqv= 0
@@ -29,16 +30,18 @@ subroutine da_ao_stats_radar (stats_unit, iv, re)
    stats%minimum%rf = maxmin_type(-missing_r, 0, 0)
 
    stats%maximum%rrn = maxmin_type (missing_r, 0, 0)
+   stats%maximum%rnr = maxmin_type (missing_r, 0, 0)
    stats%maximum%rsn = maxmin_type (missing_r, 0, 0)
    stats%maximum%rgr = maxmin_type (missing_r, 0, 0)
    stats%maximum%rqv = maxmin_type (missing_r, 0, 0)
 
    stats%minimum%rrn = maxmin_type(-missing_r, 0, 0)
+   stats%minimum%rnr = maxmin_type(-missing_r, 0, 0)
    stats%minimum%rsn = maxmin_type(-missing_r, 0, 0)
    stats%minimum%rgr = maxmin_type(-missing_r, 0, 0)
    stats%minimum%rqv = maxmin_type(-missing_r, 0, 0)
 
-   stats%average = residual_radar1_type(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+   stats%average = residual_radar1_type(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
    stats%rms_err = stats%average
 
    do n=1, iv%info(radar)%nlocal
@@ -71,6 +74,12 @@ subroutine da_ao_stats_radar (stats_unit, iv, re)
                   re%radar(n)%rgr(k), nrgr, &
                   stats%minimum%rgr, stats%maximum%rgr, &
                   stats%average%rgr, stats%rms_err%rgr)
+	       if (use_radar_rnr .and. use_cv_nr) then
+                  call da_stats_calculate (n, k, iv%radar(n)%rnr(k)%qc, &
+                     re%radar(n)%rnr(k), nrnr, &
+                     stats%minimum%rnr, stats%maximum%rnr, &
+                     stats%average%rnr, stats%rms_err%rnr)
+	       end if
             end if
 
             if (use_radar_rqv) then
@@ -115,6 +124,13 @@ subroutine da_ao_stats_radar (stats_unit, iv, re)
           stats%minimum%rgr%value, stats%maximum%rgr%value, &
           stats%minimum%rgr%n, stats%maximum%rgr%n, &
           stats%minimum%rgr%l, stats%maximum%rgr%l)
+      if (use_radar_rnr .and. use_cv_nr) then
+          call da_proc_sum_int (nrnr)
+          call da_proc_stats_combine(stats%average%rnr, stats%rms_err%rnr, &
+              stats%minimum%rnr%value, stats%maximum%rnr%value, &
+              stats%minimum%rnr%n, stats%maximum%rnr%n, &
+              stats%minimum%rnr%l, stats%maximum%rnr%l)
+      end if
    end if
 
    if (use_radar_rqv) then
@@ -127,9 +143,9 @@ subroutine da_ao_stats_radar (stats_unit, iv, re)
    iv%nstats(radar) = nrv + nrf + nrrn + nrsn + nrgr + nrqv
 
    if (rootproc) then
-      if (nrv /= 0 .or. nrf /= 0 .or. nrrn /= 0 .or. nrsn /= 0 .or. nrgr /= 0 .or. nrqv /= 0) then 
+      if (nrv /= 0 .or. nrf /= 0 .or. nrrn /= 0 .or. nrsn /= 0 .or. nrgr /= 0 .or. nrqv /= 0 .or. nrnr /= 0) then 
          write(unit=stats_unit, fmt='(/a/)') ' Diagnostics of AO for radar'
-         call da_print_stats_radar(stats_unit, nrv, nrf, nrrn, nrsn, nrgr, nrqv, stats)
+         call da_print_stats_radar(stats_unit, nrv, nrf, nrrn, nrsn, nrgr, nrnr, nrqv, stats)
       end if
    end if
 

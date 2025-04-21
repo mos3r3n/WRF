@@ -23,6 +23,7 @@ subroutine da_copy_xa (xa_dst, xa_src)
    xa_dst % qci(:,:,:) = xa_src % qci(:,:,:)
    xa_dst % qsn(:,:,:) = xa_src % qsn(:,:,:)
    xa_dst % qgr(:,:,:) = xa_src % qgr(:,:,:)
+   xa_dst % qnr(:,:,:) = xa_src % qnr(:,:,:)
 
    xa_dst % w(:,:,:)   = xa_src % w(:,:,:)
    xa_dst % p(:,:,:)   = xa_src % p(:,:,:)

@@ -41,6 +41,7 @@ subroutine da_add_flow_dependence_xa (grid, ne,  ep, vp, nobwin)
                   grid%xa%qci(i,j,k) = grid%xa%qci(i,j,k) + alpha * ep%ci(i,j,k,(nobwin-1)*ensdim_alpha+n)
                   grid%xa%qsn(i,j,k) = grid%xa%qsn(i,j,k) + alpha * ep%sn(i,j,k,(nobwin-1)*ensdim_alpha+n)
                   grid%xa%qgr(i,j,k) = grid%xa%qgr(i,j,k) + alpha * ep%gr(i,j,k,(nobwin-1)*ensdim_alpha+n)
+                  grid%xa%qnr(i,j,k) = grid%xa%qnr(i,j,k) + alpha * ep%nr(i,j,k,(nobwin-1)*ensdim_alpha+n)
 #endif
 
                end do
@@ -81,6 +82,7 @@ subroutine da_add_flow_dependence_xa (grid, ne,  ep, vp, nobwin)
                   grid%xa%qci(i,j,k) = grid%xa%qci(i,j,k) + alpha * ep%ci(i,j,k,n)
                   grid%xa%qsn(i,j,k) = grid%xa%qsn(i,j,k) + alpha * ep%sn(i,j,k,n)
                   grid%xa%qgr(i,j,k) = grid%xa%qgr(i,j,k) + alpha * ep%gr(i,j,k,n)
+		  grid%xa%qnr(i,j,k) = grid%xa%qnr(i,j,k) + alpha * ep%nr(i,j,k,n)
 #endif
                end do
             end do

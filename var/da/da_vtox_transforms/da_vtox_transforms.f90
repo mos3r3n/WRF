@@ -50,11 +50,11 @@ module da_vtox_transforms
       alphacv_method_vp, alphacv_method_xa, vertical_ip_0, trace_use_dull, &
       ips,ipe,jps,jpe,kps,kpe, cv_size, cv_options, cv_options_hum, cloud_cv_options, &
 #if (WRF_CHEM == 1)
-      len_scaling12, &
+      len_scaling13, &
       chem_cv_options, &
 #endif
       use_background_errors,jb_factor,do_normalize,use_rf,len_scaling1, len_scaling2, len_scaling3, len_scaling4, &
-      len_scaling5, len_scaling6, len_scaling7, len_scaling8, len_scaling9, len_scaling10, len_scaling11
+      len_scaling5, len_scaling6, len_scaling7, len_scaling8, len_scaling9, len_scaling10, len_scaling11, len_scaling12
 #endif
 
    use da_control, only : anal_type_hybrid_dual_res, myproc, num_procs,dual_res_upscale_opt, &
@@ -64,7 +64,7 @@ module da_vtox_transforms
                           ids_int,ide_int,jds_int,jde_int,kds_int,kde_int, &
                           ips_int,ipe_int,jps_int,jpe_int,kps_int,kpe_int
    use da_control, only : dual_res_type, aens_locs
-   use da_control, only : c1h, c2h, use_cv_w, alpha_hydrometeors
+   use da_control, only : c1h, c2h, use_cv_w, use_cv_nr, alpha_hydrometeors
    use da_define_structures, only : be_type, xbx_type,da_zero_vp_type,da_zero_x
 
 #if (WRF_CHEM == 1)

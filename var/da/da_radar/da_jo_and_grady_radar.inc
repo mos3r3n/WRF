@@ -20,7 +20,8 @@ subroutine da_jo_and_grady_radar(iv, re, jo, jo_grad_y)
    jo % radar_rrn = 0.0
    jo % radar_rsn = 0.0
    jo % radar_rgr = 0.0
-   jo % radar_rqv = 0.0 
+   jo % radar_rnr = 0.0 
+   jo % radar_rqv = 0.0
 
    do n=1, iv%info(radar)%nlocal
       do k=1, iv%info(radar)%levels(n)
@@ -36,7 +37,10 @@ subroutine da_jo_and_grady_radar(iv, re, jo, jo_grad_y)
             jo_grad_y%radar(n)%rrn(k) = -re%radar(n)%rrn(k) / (iv%radar(n)%rrn(k)%error * iv%radar(n)%rrn(k)%error) 
             jo_grad_y%radar(n)%rsn(k) = -re%radar(n)%rsn(k) / (iv%radar(n)%rsn(k)%error * iv%radar(n)%rsn(k)%error) 
             jo_grad_y%radar(n)%rgr(k) = -re%radar(n)%rgr(k) / (iv%radar(n)%rgr(k)%error * iv%radar(n)%rgr(k)%error) 
-         end if
+            if (use_radar_rnr .and. use_cv_nr) then
+               jo_grad_y%radar(n)%rnr(k) = -re%radar(n)%rnr(k) / (iv%radar(n)%rnr(k)%error * iv%radar(n)%rnr(k)%error)
+	    end if
+   	 end if
 
          if (use_radar_rqv) then
             jo_grad_y%radar(n)%rqv(k) = -re%radar(n)%rqv(k) / (iv%radar(n)%rqv(k)%error * iv%radar(n)%rqv(k)%error) 
@@ -57,7 +61,10 @@ subroutine da_jo_and_grady_radar(iv, re, jo, jo_grad_y)
                jo % radar_rrn = jo % radar_rrn - re%radar(n)%rrn(k) * jo_grad_y%radar(n)%rrn(k)
                jo % radar_rsn = jo % radar_rsn - re%radar(n)%rsn(k) * jo_grad_y%radar(n)%rsn(k)
                jo % radar_rgr = jo % radar_rgr - re%radar(n)%rgr(k) * jo_grad_y%radar(n)%rgr(k)
-            end if
+               if (use_radar_rnr .and. use_cv_nr) then
+                  jo % radar_rnr = jo % radar_rnr - re%radar(n)%rnr(k) * jo_grad_y%radar(n)%rnr(k)
+	       end if
+   	    end if
 
             if (use_radar_rqv) then
                jo % radar_rqv = jo % radar_rqv - re%radar(n)%rqv(k) * jo_grad_y%radar(n)%rqv(k)
@@ -71,6 +78,7 @@ subroutine da_jo_and_grady_radar(iv, re, jo, jo_grad_y)
    jo % radar_rrn= 0.5 * jo % radar_rrn
    jo % radar_rsn= 0.5 * jo % radar_rsn
    jo % radar_rgr= 0.5 * jo % radar_rgr
+   jo % radar_rnr= 0.5 * jo % radar_rnr
    jo % radar_rqv= 0.5 * jo % radar_rqv
 
    if (trace_use) call da_trace_exit("da_jo_and_grady_radar")

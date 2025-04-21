@@ -32,82 +32,39 @@ subroutine da_transform_vtovv_inv(grid, cv_size, be, cv, vv)
 
    ! [2.1] Transform 1st control variable:
    mz = be % v1 % mz
-   !s(3)=s(1)+mz-1
-   !if( do_normalize )call da_transform_rescale(mz,be%sd(:,:,s(1):s(3)),vv%v1)
    if( use_rf .and. mz > 0 .and. len_scaling1(1) /= 0.0) then
       call da_transform_through_rf_inv(grid, mz, be % v1 % rf_alpha, be % v1 % val, vv % v1)
-   !elseif( mz > 0 ) then
-   !   s(4)=s(2)+nij(0,0,2)*nij(0,1,2)*mz-1
-   !   call da_transform_through_wavelet_inv(grid,mz,be%wsd(:,:,s(1):s(3)),cv(s(2):s(4)),vv%v1)
-   !   s(2)=s(4)+1
-   !else
-   !   !print'(a,": be%v1%mz=",I0)',__FILE__,mz
    endif
-   !s(1)=s(3)+1
 
    ! [2.2] Transform 2nd control variable:
 
    mz = be % v2 % mz
-   !s(3)=s(1)+mz-1
-   !if( do_normalize )call da_transform_rescale(mz,be%sd(:,:,s(1):s(3)),vv%v2)
    if( use_rf .and. mz > 0 .and. len_scaling2(1) /= 0.0) then
       call da_transform_through_rf_inv(grid, mz, be % v2 % rf_alpha, be % v2 % val, vv % v2)
-   !elseif( mz > 0 ) then
-   !   s(4)=s(2)+nij(0,0,2)*nij(0,1,2)*mz-1
-   !   call da_transform_through_wavelet_inv(grid,mz,be%wsd(:,:,s(1):s(3)),cv(s(2):s(4)),vv%v2)
-   !   s(2)=s(4)+1
-   !else
-   !   !print'(a,": be%v2%mz=",I0)',__FILE__,mz
    endif
-   !s(1)=s(3)+1
 
    ! [2.3] Transform 3rd control variable
 
    mz = be % v3 % mz
-   !s(3)=s(1)+mz-1
-   !if( do_normalize )call da_transform_rescale(mz,be%sd(:,:,s(1):s(3)),vv%v3)
    if( use_rf .and. mz > 0 .and. len_scaling3(1) /= 0.0) then
       call da_transform_through_rf_inv(grid, mz, be % v3 % rf_alpha, be % v3 % val, vv % v3)
-   !elseif( mz > 0 ) then
-   !   s(4)=s(2)+nij(0,0,2)*nij(0,1,2)*mz-1
-   !   call da_transform_through_wavelet_inv(grid,mz,be%wsd(:,:,s(1):s(3)),cv(s(2):s(4)),vv%v3)
-   !   s(2)=s(4)+1
-   !else
-   !   !print'(a,": be%v3%mz=",I0)',__FILE__,mz
    endif
    !s(1)=s(3)+1
    
    ! [2.4] Transform 4th control variable
       
    mz = be % v4 % mz
-   !s(3)=s(1)+mz-1
-   !if( do_normalize )call da_transform_rescale(mz,be%sd(:,:,s(1):s(3)),vv%v4)
    if( use_rf .and. mz > 0 .and. len_scaling4(1) /= 0.0) then
       call da_transform_through_rf_inv(grid, mz, be % v4 % rf_alpha, be % v4 % val, vv % v4)
-   !elseif( mz > 0 ) then
-   !   s(4)=s(2)+nij(0,0,2)*nij(0,1,2)*mz-1
-   !   call da_transform_through_wavelet_inv(grid,mz,be%wsd(:,:,s(1):s(3)),cv(s(2):s(4)),vv%v4)
-   !   s(2)=s(4)+1
-   !else
-   !   !print'(a,": be%v4%mz=",I0)',__FILE__,mz
    endif
    !s(1)=s(3)+1
 
    ! [2.5] Transform 5th control variable
 
    mz = be % v5 % mz
-   !s(3)=s(1)+mz-1
-   !if( do_normalize )call da_transform_rescale(mz,be%sd(:,:,s(1):s(3)),vv%v5)
    if( use_rf .and. mz > 0 .and. len_scaling5(1) /= 0.0) then
       call da_transform_through_rf_inv(grid, mz, be % v5 % rf_alpha, be % v5 % val, vv % v5)
-   !elseif( mz > 0 ) then
-   !   s(4)=s(2)+nij(0,0,2)*nij(0,1,2)*mz-1
-   !   call da_transform_through_wavelet_inv(grid,mz,be%wsd(:,:,s(1):s(3)),cv(s(2):s(4)),vv%v5)
-   !   s(2)=s(4)+1
-   !else
-   !   !print'(a,": be%v5%mz=",I0)',__FILE__,mz
    endif
-   !s(1)=s(3)+1
 
    if ( use_rf .and. cloud_cv_options <= 1 ) then
       vv % v6  = 0.0
@@ -116,6 +73,7 @@ subroutine da_transform_vtovv_inv(grid, cv_size, be, cv, vv)
       vv % v9  = 0.0
       vv % v10 = 0.0
       vv % v11 = 0.0
+      vv % v12 = 0.0
    end if
 
 
@@ -145,7 +103,13 @@ subroutine da_transform_vtovv_inv(grid, cv_size, be, cv, vv)
             if ( mz > 0 .and. len_scaling10(1) > 0.0 ) then
                call da_transform_through_rf_inv(grid, mz, be % v10 % rf_alpha, be % v10 % val, vv % v10)
             end if
-         case ( 3 )
+            if ( use_cv_nr ) then
+               mz = be % v11 % mz
+               if ( mz > 0 .and. len_scaling11(1) > 0.0 ) then
+                  call da_transform_through_rf_inv(grid, mz, be % v11 % rf_alpha, be % v11 % val, vv % v11)
+               end if
+	    end if
+   	 case ( 3 )
             scaling = .true.
             mz = be % v6 % mz
             if ( mz > 0 .and. len_scaling6(1) > 0.0 ) then
@@ -167,6 +131,12 @@ subroutine da_transform_vtovv_inv(grid, cv_size, be, cv, vv)
             if ( mz > 0 .and. len_scaling10(1) > 0.0 ) then
                call da_transform_through_rf_inv(grid, mz, be % v10 % rf_alpha, be % v10 % val, vv % v10, scaling)
             end if
+	    if ( use_cv_nr ) then
+               mz = be % v11 % mz
+               if ( mz > 0 .and. len_scaling11(1) > 0.0 ) then
+                  call da_transform_through_rf_inv(grid, mz, be % v11 % rf_alpha, be % v11 % val, vv % v11, scaling)
+               end if
+            end if
       end select
    end if
 
@@ -174,15 +144,15 @@ subroutine da_transform_vtovv_inv(grid, cv_size, be, cv, vv)
 
    if ( use_rf ) then
       if ( .not. use_cv_w ) then
-         vv % v11 = 0.0
+         vv % v12 = 0.0
       else
-         mz = be % v11 % mz
-         if ( mz > 0 .and. len_scaling11(1) > 0.0 ) then
+         mz = be % v12 % mz
+         if ( mz > 0 .and. len_scaling12(1) > 0.0 ) then
             if ( cloud_cv_options == 2 ) then
-               call da_transform_through_rf_inv(grid, mz, be % v11 % rf_alpha, be % v11 % val, vv % v11)
+               call da_transform_through_rf_inv(grid, mz, be % v12 % rf_alpha, be % v12 % val, vv % v12)
             else if ( cloud_cv_options == 3 ) then
                scaling = .true.
-               call da_transform_through_rf_inv(grid, mz, be % v11 % rf_alpha, be % v11 % val, vv % v11, scaling)
+               call da_transform_through_rf_inv(grid, mz, be % v12 % rf_alpha, be % v12 % val, vv % v12, scaling)
             end if
          end if
       end if
@@ -194,26 +164,10 @@ subroutine da_transform_vtovv_inv(grid, cv_size, be, cv, vv)
    ne = be % ne
    if (ne > 0) then
       mz = be % alpha % mz
-      !if( do_normalize )then
-      !   do n = 1, ne
-      !      call da_transform_rescale(mz,be%alpha%sd,vv%alpha(:,:,:,n))
-      !   end do
-      !endif
       if( use_rf )then
          do n = 1, ne
-            !if ( anal_type_hybrid_dual_res ) then
-            !   call da_transform_through_rf_inv_dual_res(grid % intermediate_grid, mz, be % alpha % rf_alpha, &
-            !                                             be % alpha % val, vv % alpha(:,:,:,n))
-            !else
-               call da_transform_through_rf_inv(grid, mz, be % alpha % rf_alpha, be % alpha % val, vv % alpha(:,:,:,n))
-            !endif
+            call da_transform_through_rf_inv(grid, mz, be % alpha % rf_alpha, be % alpha % val, vv % alpha(:,:,:,n))
          end do
-      !else
-         !do n = 1, ne
-         !   s(4)=s(2)+nij(0,0,2)*nij(0,1,2)*mz-1
-         !   call da_transform_through_wavelet_inv(grid,mz,be%alpha%wsd,cv(s(2):s(4)),vv%alpha(:,:,:,n))
-         !   s(2)=s(4)+1
-         !end do
       endif
    endif
 

@@ -79,7 +79,8 @@ subroutine da_vertical_transform(grid, string, be, vertical_wgt, vv, vp)
       vp % v8  = 0.0 ! cloud ice qice
       vp % v9  = 0.0 ! snow qsnow
       vp % v10 = 0.0 ! qgraupel
-      vp % v11 = 0.0 ! vertical velocity w
+      vp % v11 = 0.0 ! qnrain
+      vp % v12 = 0.0 ! vertical velocity w
 
       if ( cloud_cv_options == 2 ) then
          if (be % v6 % mz > 0) then
@@ -106,21 +107,27 @@ subroutine da_vertical_transform(grid, string, be, vertical_wgt, vv, vp)
             call da_transform_vvtovp (grid, be % v10 % evec, be % v10 % val, vertical_wgt, &
                vv % v10, vp % v10, be % v10 % mz, kte)
          end if
+
+	 if (use_cv_nr .and. be % v11% mz > 0) then
+            call da_transform_vvtovp (grid, be % v11 % evec, be % v11 % val, vertical_wgt, &
+               vv % v11, vp % v11, be % v11 % mz, kte)
+	 end if
       else if ( cloud_cv_options == 3 ) then
          if ( be % v6  % mz > 0) vp % v6  = vv % v6
          if ( be % v7  % mz > 0) vp % v7  = vv % v7
          if ( be % v8  % mz > 0) vp % v8  = vv % v8
          if ( be % v9  % mz > 0) vp % v9  = vv % v9
          if ( be % v10 % mz > 0) vp % v10 = vv % v10
+	 if (use_cv_nr .and. be % v11% mz > 0)  vp % v11 = vv % v11
       end if
 
       if ( use_cv_w ) then
-         if (be % v11 % mz > 0) then
+         if (be % v12 % mz > 0) then
             if ( cloud_cv_options == 2 ) then
-               call da_transform_vvtovp (grid, be % v11 % evec, be % v11 % val, vertical_wgt, &
-                  vv % v11, vp % v11, be % v11 % mz, kte)
+               call da_transform_vvtovp (grid, be % v12 % evec, be % v12 % val, vertical_wgt, &
+                  vv % v12, vp % v12, be % v12 % mz, kte)
             else if ( cloud_cv_options == 3 ) then
-               vp % v11 = vv % v11
+               vp % v12 = vv % v12
             end if
          end if
       end if
@@ -136,13 +143,6 @@ subroutine da_vertical_transform(grid, string, be, vertical_wgt, vv, vp)
             endif
          end do
 
-!        Calculate alpha standard deviation diagnostic:
-!         size_inv = 1.0 / ( (ite-its+1) * ( jte-jts+1) * be % ne * be % alpha % mz )
-!         alpha_me = sum(vp % alpha(its:ite,jts:jte,:)) * size_inv
-!         alpha_ms = sum(vp % alpha(its:ite,jts:jte,:) * vp % alpha(its:ite,jts:jte,:)) * &
-!                    size_inv
-!         alpha_sd = sqrt( alpha_ms - alpha_me * alpha_me )
-!         write(6,'(a,f15.5)')' Alpha std. dev = ', alpha_sd
       end if
 
    case ('u_inv');
@@ -206,6 +206,11 @@ subroutine da_vertical_transform(grid, string, be, vertical_wgt, vv, vp)
               vp % v10, vv % v10, be % v10 % mz, kte)
          end if
 
+	 if (use_cv_nr .and. be % v11 % mz > 0) then
+           call da_transform_vvtovp_inv (grid, be % v11 % evec, be % v11 % val, vertical_wgt, &
+              vp % v11, vv % v11, be % v11 % mz, kte)
+         end if
+
       else if ( cloud_cv_options == 3 ) then
          if (be % v6 % mz > 0) then
             vv % v6 = vp % v6
@@ -227,28 +232,25 @@ subroutine da_vertical_transform(grid, string, be, vertical_wgt, vv, vp)
             vv % v10 = vp % v10
          end if
 
+	 if (use_cv_nr .and. be % v11 % mz > 0) then
+            vv % v11 = vp % v11
+         end if
+
       end if
 
       if ( use_cv_w ) then
-         if (be % v11 % mz > 0) then
+         if (be % v12 % mz > 0) then
              if ( cloud_cv_options == 2 ) then
-                call da_transform_vvtovp_inv (grid, be % v11 % evec, be % v11 % val, vertical_wgt, &
-                   vp % v11, vv % v11, be % v11 % mz, kte)
+                call da_transform_vvtovp_inv (grid, be % v12 % evec, be % v12 % val, vertical_wgt, &
+                   vp % v12, vv % v12, be % v12 % mz, kte)
              else if ( cloud_cv_options == 3 ) then
-                vv % v11 = vp % v11
+                vv % v12 = vp % v12
              end if
          end if
       end if
 
       if ( be % ne > 0 .and. be % alpha % mz > 0 ) then
          do n = 1, be % ne
-!           call da_transform_vptovv (be % alpha % evec, be % alpha % val, vertical_wgt, &
-!                                     vp % alpha(:,:,:,n), vv % alpha(:,:,:,n), be % alpha % mz, kds,kde, &
-!                                     ims,ime, jms,jme, kms,kme, its,ite, jts,jte, kts,kte)
-!            call da_transform_vptovv (be % alpha % evec, be % alpha % val, vertical_wgt, &
-!                                      vp % alpha(:,:,:,n), vv % alpha(:,:,:,n), be % alpha % mz, kds_int,kde_int, &
-!                                      ims_int,ime_int, jms_int,jme_int, kms_int,kme_int, its_int,ite_int, &
-!                                      jts_int,jte_int, kts_int,kte_int)
 
             call da_transform_vvtovp_inv (grid, be % alpha % evec, be % alpha % val, vertical_wgt, &
                                       vp % alpha(:,:,:,n), vv % alpha(:,:,:,n), be % alpha % mz, kte)
@@ -317,6 +319,11 @@ subroutine da_vertical_transform(grid, string, be, vertical_wgt, vv, vp)
                vp % v10, vv % v10, be % v10 % mz, kte)
          end if
 
+	 if (use_cv_nr .and. be % v11 % mz > 0) then
+            call da_transform_vvtovp_adj (grid, be % v11 % evec, be % v11 % val, vertical_wgt, &
+               vp % v11, vv % v11, be % v11 % mz, kte)
+         end if
+
       else if ( cloud_cv_options == 3 ) then
          if (be % v6 % mz > 0) then
             vv % v6 = vp % v6
@@ -338,15 +345,19 @@ subroutine da_vertical_transform(grid, string, be, vertical_wgt, vv, vp)
             vv % v10 = vp % v10
          end if
 
+	 if (use_cv_nr .and. be % v11 % mz > 0) then
+            vv % v11 = vp % v11
+         end if
+
       end if
 
       if ( use_cv_w ) then
-         if (be % v11 % mz > 0) then
+         if (be % v12 % mz > 0) then
             if ( cloud_cv_options == 2 ) then
-               call da_transform_vvtovp_adj (grid, be % v11 % evec, be % v11 % val, vertical_wgt, &
-                  vp % v11, vv % v11, be % v11 % mz, kte)
+               call da_transform_vvtovp_adj (grid, be % v12 % evec, be % v12 % val, vertical_wgt, &
+                  vp % v12, vv % v12, be % v12 % mz, kte)
             else if ( cloud_cv_options == 3 ) then
-               vv % v11 = vp % v11
+               vv % v12 = vp % v12
             end if
          end if
       end if

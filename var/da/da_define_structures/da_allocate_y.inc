@@ -189,10 +189,18 @@ subroutine da_allocate_y (iv, y)
          nlevels = iv%info(radar)%levels(n)
          allocate (y % radar(n)%rv(1:nlevels))
          allocate (y % radar(n)%rf(1:nlevels))
+	 if ( use_dualpol_radar ) then
+	    allocate (y % radar(n)%zdr(1:nlevels))
+            allocate (y % radar(n)%kdp(1:nlevels))
+            allocate (y % radar(n)%cc(1:nlevels))
+	 end if
          if ( use_radar_rhv ) then
             allocate (y % radar(n)%rrn(1:nlevels))
             allocate (y % radar(n)%rsn(1:nlevels))
             allocate (y % radar(n)%rgr(1:nlevels))
+         end if
+	 if ( use_radar_rnr ) then
+            allocate (y % radar(n)%rnr(1:nlevels))
          end if
          if ( use_radar_rqv ) then
             allocate (y % radar(n)%rqv(1:nlevels))
@@ -200,10 +208,18 @@ subroutine da_allocate_y (iv, y)
 
          y % radar(n) % rv(1:nlevels)  = 0.0
          y % radar(n) % rf(1:nlevels)  = 0.0
+	 if ( use_dualpol_radar ) then
+            y % radar(n) % zdr(1:nlevels) = 0.0
+            y % radar(n) % kdp(1:nlevels) = 0.0
+            y % radar(n) % cc(1:nlevels) = 0.0
+	 end if
          if ( use_radar_rhv ) then
             y % radar(n) % rrn(1:nlevels) = 0.0
             y % radar(n) % rsn(1:nlevels) = 0.0
             y % radar(n) % rgr(1:nlevels) = 0.0
+         end if
+	 if ( use_radar_rnr ) then
+            y % radar(n) % rnr(1:nlevels) = 0.0
          end if
          if ( use_radar_rqv ) then
             y % radar(n) % rqv(1:nlevels) = 0.0

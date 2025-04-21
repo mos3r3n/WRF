@@ -90,9 +90,10 @@ end if
          vp % v8(its:ite,jts:jte,kts:kte)  = vv % v8(its:ite,jts:jte,kts:kte)
          vp % v9(its:ite,jts:jte,kts:kte)  = vv % v9(its:ite,jts:jte,kts:kte)
          vp % v10(its:ite,jts:jte,kts:kte) = vv % v10(its:ite,jts:jte,kts:kte)
+	 if ( use_cv_nr ) vp % v11(its:ite,jts:jte,kts:kte) = vv % v11(its:ite,jts:jte,kts:kte)
       end if
       if ( use_cv_w ) then
-         vp % v11(its:ite,jts:jte,kts:kte) = vv % v11(its:ite,jts:jte,kts:kte)
+         vp % v12(its:ite,jts:jte,kts:kte) = vv % v12(its:ite,jts:jte,kts:kte)
       end if
 
       if (be % ne > 0) then

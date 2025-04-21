@@ -25,7 +25,8 @@ subroutine da_write_vp (grid,vp,filename)
    real, dimension(:,:,:), allocatable :: v1_global, v2_global, &
                                v3_global, v4_global, v5_global
    real, dimension(:,:,:), allocatable :: v6_global, v7_global, &
-                    v8_global, v9_global, v10_global, v11_global
+                    v8_global, v9_global, v10_global, v11_global, &
+		    v12_global
 #endif
 
    integer :: vp_unit, vp_local_unit
@@ -54,9 +55,12 @@ subroutine da_write_vp (grid,vp,filename)
      allocate (   v8_global (1:ix,1:jy,1:kz))
      allocate (   v9_global (1:ix,1:jy,1:kz))
      allocate (   v10_global (1:ix,1:jy,1:kz))
+     if ( use_cv_nr ) then
+       allocate (   v11_global (1:ix,1:jy,1:kz))
+     end if
    end if
    if ( use_cv_w ) then
-     allocate (   v11_global (1:ix,1:jy,1:kz))
+     allocate (   v12_global (1:ix,1:jy,1:kz))
    end if
 
    call da_patch_to_global(grid, vp % v1, gbuf)  ! psi or u
@@ -110,42 +114,27 @@ subroutine da_write_vp (grid,vp,filename)
    if (rootproc) then
       v10_global(1:ix,1:jy,1:kz) = gbuf(1:ix,1:jy,1:kz)
    end if
+
+   if ( use_cv_nr ) then
+     call da_patch_to_global(grid, vp % v11, gbuf) ! qnrain
+     if (rootproc) then
+        v11_global(1:ix,1:jy,1:kz) = gbuf(1:ix,1:jy,1:kz)
+     end if
+   end if
   end if ! cloud_cv_options
 
   if ( use_cv_w ) then
-   call da_patch_to_global(grid, vp % v11, gbuf) ! w
+   call da_patch_to_global(grid, vp % v12, gbuf) ! w
    if (rootproc) then
-      v11_global(1:ix,1:jy,1:kz) = gbuf(1:ix,1:jy,1:kz)
+      v12_global(1:ix,1:jy,1:kz) = gbuf(1:ix,1:jy,1:kz)
    end if
   end if
-
-      !write(unit=vpfile,fmt='(a,i4.4)') 'vp_',myproc
-      !call da_get_unit(vp_local_unit)
-      !open(unit=vp_local_unit, file=trim(vpfile), form='unformatted')
-
-      !print *, "local: ips,ipe,jps,jpe,kps,kpe=", ips,ipe,jps,jpe,kps,kpe
-      !print *, "local: ims,ime,jms,jme,kms,kme=", ims,ime,jms,jme,kms,kme
-      !print *, "local: dimx, dimy, dimz=", size(vp%v5,1),size(vp%v5,2),size(vp%v5,3)
-
-      !write (unit=vp_local_unit) ips,ipe,jps,jpe,kps,kpe, &
-      !                           ims,ime,jms,jme,kms,kme, &
-      !              size(vp%v5,1),size(vp%v5,2),size(vp%v5,3)
-
-      !write (unit=vp_local_unit) vp%v1, vp%v2, &
-      !                     vp%v3, vp%v4, vp%v5
-
-      !close(vp_local_unit)
-      !call da_free_unit(vp_local_unit)
-
 
 #endif
 
    if (rootproc) then
       call da_get_unit(vp_unit)
       open(unit=vp_unit, file=trim(filename), form='unformatted')
-
-      !print *, "ANALYSIS_DATE= ", ANALYSIS_DATE
-      !write (unit=vp_unit) ANALYSIS_DATE
 
       print *, "write_vp: Global ix, jy, kz=", ix, jy, kz
       write (unit=vp_unit) ix, jy, kz 
@@ -159,8 +148,9 @@ subroutine da_write_vp (grid,vp,filename)
       if ( cloud_cv_options >= 2 ) then
           write (unit=vp_unit) v6_global, v7_global, &
                            v8_global, v9_global, v10_global
+          if ( use_cv_nr ) write (unit=vp_unit) v11_global
       end if
-      if ( use_cv_w ) write (unit=vp_unit) v11_global
+      if ( use_cv_w ) write (unit=vp_unit) v12_global
 
       close(vp_unit)
       call da_free_unit(vp_unit)
@@ -179,8 +169,9 @@ subroutine da_write_vp (grid,vp,filename)
                              vp%v8(1:ix,1:jy,1:kz), &
                              vp%v9(1:ix,1:jy,1:kz), &
                              vp%v10(1:ix,1:jy,1:kz)
+        if ( use_cv_nr ) write (unit=vp_unit) vp%v11(1:ix,1:jy,1:kz)
       end if
-      if ( use_cv_w ) write (unit=vp_unit) vp%v11(1:ix,1:jy,1:kz)
+      if ( use_cv_w ) write (unit=vp_unit) vp%v12(1:ix,1:jy,1:kz)
 
       close(vp_unit)
       call da_free_unit(vp_unit)

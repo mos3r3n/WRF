@@ -24,6 +24,9 @@ subroutine da_fill_obs_structures_radar(iv, ob)
 
    iv % radar_ef_rv = 1.0
    iv % radar_ef_rf = 1.0
+   iv % radar_ef_zdr = 1.0
+   iv % radar_ef_kdp = 1.0
+   iv % radar_ef_cc = 1.0
 
    !----------------------------------------------------------------------
    ! [1.0] Allocate innovation vector and observation structures:
@@ -39,15 +42,23 @@ subroutine da_fill_obs_structures_radar(iv, ob)
    if (iv%info(radar)%nlocal > 0) then
       do n = 1, iv%info(radar)%nlocal
          do k = 1, iv%info(radar)%levels(n)
-            ! Copy observation variables:
-            !ob % radar(n) % rv(k) = iv % radar(n) % rv(k) % inv
-            !ob % radar(n) % rf(k) = iv % radar(n) % rf(k) % inv
             if(iv % radar(n) % rv(k) % qc-missing_data>1.0)  then
               ob % radar(n) % rv(k) = iv % radar(n) % rv(k) % inv * radar_rv_rscl
-            endif
+            end if
             if(iv % radar(n) % rf(k) % qc-missing_data>1.0)  then
               ob % radar(n) % rf(k) = iv % radar(n) % rf(k) % inv * radar_rf_rscl
-            endif
+            end if
+	    if ( use_dualpol_radar ) then
+	      if(iv % radar(n) % zdr(k) % qc-missing_data>1.0)  then
+                ob % radar(n) % zdr(k) = iv % radar(n) % zdr(k) % inv * radar_zdr_rscl
+              end if
+              if(iv % radar(n) % kdp(k) % qc-missing_data>1.0)  then
+                ob % radar(n) % kdp(k) = iv % radar(n) % kdp(k) % inv * radar_kdp_rscl
+              end if
+	      if(iv % radar(n) % cc(k) % qc-missing_data>1.0)  then
+                ob % radar(n) % cc(k) = iv % radar(n) % cc(k) % inv * radar_cc_rscl
+              end if
+	    end if
          end do
       end do
    end if

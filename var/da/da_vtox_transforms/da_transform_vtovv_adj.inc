@@ -116,7 +116,7 @@ subroutine da_transform_vtovv_adj(grid, cv_size, be, cv, vv &
    s(1)=s(3)+1
 
    if ( .not. use_rf .and. cloud_cv_options > 0 ) then
-      call da_error(__FILE__,__LINE__,(/"no da_transform_through_wavelet_adj for v6-v11"/))
+      call da_error(__FILE__,__LINE__,(/"no da_transform_through_wavelet_adj for v6-v12"/))
    end if
 
    if ( use_rf .and. cloud_cv_options <= 1 ) then
@@ -126,6 +126,7 @@ subroutine da_transform_vtovv_adj(grid, cv_size, be, cv, vv &
       vv % v9  = 0.0
       vv % v10 = 0.0
       vv % v11 = 0.0
+      vv % v12 = 0.0
    end if
 
    if ( use_rf .and. cloud_cv_options >= 2 ) then
@@ -152,6 +153,12 @@ subroutine da_transform_vtovv_adj(grid, cv_size, be, cv, vv &
             if ( mz > 0 .and. len_scaling10(1) > 0.0 ) then
                call da_transform_through_rf_adj(grid, mz, be % v10 % rf_alpha, be % v10 % val, vv % v10)
             end if
+	    if ( use_cv_nr ) then
+               mz = be % v11 % mz
+               if ( mz > 0 .and. len_scaling11(1) > 0.0 ) then
+                  call da_transform_through_rf_adj(grid, mz, be % v11 % rf_alpha, be % v11 % val, vv % v11)
+               end if
+	    end if
          case ( 3 )
             scaling = .true.
             mz = be % v6 % mz
@@ -174,6 +181,12 @@ subroutine da_transform_vtovv_adj(grid, cv_size, be, cv, vv &
             if ( mz > 0 .and. len_scaling10(1) > 0.0 ) then
                call da_transform_through_rf_adj(grid, mz, be % v10 % rf_alpha, be % v10 % val, vv % v10, scaling)
             end if
+	    if ( use_cv_nr ) then
+               mz = be % v11 % mz
+               if ( mz > 0 .and. len_scaling11(1) > 0.0 ) then
+                  call da_transform_through_rf_adj(grid, mz, be % v11 % rf_alpha, be % v11 % val, vv % v11, scaling)
+               end if
+            end if
       end select
    end if
 
@@ -181,15 +194,15 @@ subroutine da_transform_vtovv_adj(grid, cv_size, be, cv, vv &
 
    if ( use_rf ) then
       if ( .not. use_cv_w ) then
-         vv % v11 = 0.0
+         vv % v12 = 0.0
       else
-         mz = be % v11 % mz
-         if ( mz > 0 .and. len_scaling11(1) > 0.0 ) then
+         mz = be % v12 % mz
+         if ( mz > 0 .and. len_scaling12(1) > 0.0 ) then
             if ( cloud_cv_options == 2 ) then
-               call da_transform_through_rf_adj(grid, mz, be % v11 % rf_alpha, be % v11 % val, vv % v11)
+               call da_transform_through_rf_adj(grid, mz, be % v12 % rf_alpha, be % v12 % val, vv % v12)
             else if ( cloud_cv_options == 3 ) then
                scaling = .true.
-               call da_transform_through_rf_adj(grid, mz, be % v11 % rf_alpha, be % v11 % val, vv % v11, scaling)
+               call da_transform_through_rf_adj(grid, mz, be % v12 % rf_alpha, be % v12 % val, vv % v12, scaling)
             end if
          end if
       end if
@@ -228,10 +241,10 @@ subroutine da_transform_vtovv_adj(grid, cv_size, be, cv, vv &
   if (present(vchem)) then
 !!!   do ic = 1, num_chem-1
    do ic = PARAM_FIRST_SCALAR, num_chem
-      mz = be % v12 (ic-1) % mz
+      mz = be % v13 (ic-1) % mz
       if( use_rf .and. mz > 0 ) then
-         call da_transform_through_rf_adj(grid, mz, be % v12 (ic-1) % rf_alpha, &
-                                                be % v12 (ic-1) % val, &
+         call da_transform_through_rf_adj(grid, mz, be % v13 (ic-1) % rf_alpha, &
+                                                be % v13 (ic-1) % val, &
                                                 vchem % chem_ic (:,:,:,ic) )
       elseif( .not. use_rf ) then
          call da_error(__FILE__,__LINE__,(/"no da_transform_through_wavelet for chem_ic"/))

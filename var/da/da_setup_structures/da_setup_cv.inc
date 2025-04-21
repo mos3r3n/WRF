@@ -55,9 +55,10 @@ subroutine da_setup_cv(be)
          be % cv % size8 = ij * be % v8 % mz
          be % cv % size9 = ij * be % v9 % mz
          be % cv % size10= ij * be % v10 % mz
+	 if ( use_cv_nr ) be % cv % size11= ij * be % v11 % mz
       end if
       if ( use_cv_w ) then
-         be % cv % size11i= ij * be % v11 % mz
+         be % cv % size12 = ij * be % v12 % mz
       end if
 
    end if
@@ -69,10 +70,11 @@ subroutine da_setup_cv(be)
       be % cv % size_jb = be % cv % size_jb + be % cv % size6 + &
          be % cv % size7 + be % cv % size8 + be % cv % size9 + &
          be % cv % size10
+      if ( use_cv_nr ) be % cv % size_jb = be % cv % size_jb + be % cv % size11
    end if
 
    if ( use_cv_w ) then
-      be % cv % size_jb = be % cv % size_jb + be % cv % size11i
+      be % cv % size_jb = be % cv % size_jb + be % cv % size12
    end if
 
    !--------------------------------------------------------------
@@ -127,9 +129,10 @@ subroutine da_setup_cv(be)
       if ( cloud_cv_options >= 2 ) then
          cv_size_domain_jb = cv_size_domain_jb + ij * (be % v6 % mz + &
              be % v7 % mz + be % v8 % mz + be % v9 % mz + be % v10 % mz )
+	 if ( use_cv_nr ) cv_size_domain_jb = cv_size_domain_jb + ij * be % v11 % mz
       end if
       if ( use_cv_w ) then
-         cv_size_domain_jb = cv_size_domain_jb + ij * be % v11 % mz
+         cv_size_domain_jb = cv_size_domain_jb + ij * be % v12 % mz
       end if
       cv_size_domain_je = ij * be % alpha % mz * be % ne
       if ( var4d ) then
@@ -148,7 +151,7 @@ subroutine da_setup_cv(be)
 
       be % cv % sizechemic (:) = 0
       do ic = PARAM_FIRST_SCALAR, num_chem
-         be % cv % sizechemic (ic) = ij * be % v12(ic-1) % mz
+         be % cv % sizechemic (ic) = ij * be % v13(ic-1) % mz
       end do
       be % cv % size_jb = be % cv % size_jb + sum (be % cv % sizechemic (:))
 

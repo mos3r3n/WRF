@@ -23,7 +23,7 @@ subroutine da_read_iv_for_multi_inc(file_index, iv)
 
    integer :: nobs_tot, nlev_max, k , iobs
    integer :: nobs_in, nlev_in
-   logical :: has_rv, has_rf, has_rhv, has_rqv
+   logical :: has_rv, has_rf, has_rhv, has_rqv, has_dualpol, has_rnr
    real, allocatable :: data2d(:,:)
    real, allocatable :: data3d(:,:,:)
 
@@ -745,7 +745,7 @@ subroutine da_read_iv_for_multi_inc(file_index, iv)
             (/"Cannot open file "//trim(filename)/))
       end if
 
-      read(unit_in) nobs_in, nlev_in, has_rv, has_rf, has_rhv, has_rqv
+      read(unit_in) nobs_in, nlev_in, has_rv, has_rf, has_dualpol, has_rhv, has_rnr, has_rqv
       if ( nobs_in /= nobs_tot .or. nlev_in /= nlev_max ) then
          call da_error(__FILE__,__LINE__, &
             (/"Dimensions (nobs_tot or nlev_max) mismatch "/))
@@ -787,6 +787,26 @@ subroutine da_read_iv_for_multi_inc(file_index, iv)
          deallocate( data3d )
       end if
 
+      if ( use_dualpol_radar .and. has_dualpol ) then
+         allocate( data3d(nobs_tot, nlev_max, 9) )
+         read(unit_in) data3d
+         do n = iv%info(radar)%n1, iv%info(radar)%n2
+            iobs = iv%info(radar)%obs_global_index(n)
+            do k = 1 , iv%info(radar)%levels(n)
+               iv%radar(n)%zdr(k)%inv   =     data3d(iobs, k, 1)
+               iv%radar(n)%zdr(k)%qc    = int(data3d(iobs, k, 2))
+               iv%radar(n)%zdr(k)%error =     data3d(iobs, k, 3)
+               iv%radar(n)%kdp(k)%inv   =     data3d(iobs, k, 4)
+               iv%radar(n)%kdp(k)%qc    = int(data3d(iobs, k, 5))
+               iv%radar(n)%kdp(k)%error =     data3d(iobs, k, 6)
+               iv%radar(n)%cc(k)%inv    =     data3d(iobs, k, 7)
+               iv%radar(n)%cc(k)%qc     = int(data3d(iobs, k, 8))
+               iv%radar(n)%cc(k)%error  =     data3d(iobs, k, 9)
+            end do
+         end do
+         deallocate( data3d )
+      end if
+
       if ( use_radar_rhv .and. has_rhv ) then
          allocate( data3d(nobs_tot, nlev_max, 9) )
          read(unit_in) data3d
@@ -802,6 +822,20 @@ subroutine da_read_iv_for_multi_inc(file_index, iv)
                iv%radar(n)%rgr(k)%inv   =     data3d(iobs, k, 7)
                iv%radar(n)%rgr(k)%qc    = int(data3d(iobs, k, 8))
                iv%radar(n)%rgr(k)%error =     data3d(iobs, k, 9)
+            end do
+         end do
+         deallocate( data3d )
+      end if
+ 
+      if ( use_radar_rnr .and. has_rnr ) then
+         allocate( data3d(nobs_tot, nlev_max, 3) )
+         read(unit_in) data3d
+         do n = iv%info(radar)%n1, iv%info(radar)%n2
+            iobs = iv%info(radar)%obs_global_index(n)
+            do k = 1 , iv%info(radar)%levels(n)
+               iv%radar(n)%rnr(k)%inv   =     data3d(iobs, k, 1)
+               iv%radar(n)%rnr(k)%qc    = int(data3d(iobs, k, 2))
+               iv%radar(n)%rnr(k)%error =     data3d(iobs, k, 3)
             end do
          end do
          deallocate( data3d )

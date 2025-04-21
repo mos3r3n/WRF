@@ -36,9 +36,9 @@ subroutine da_update_firstguess(grid, out_filename)
 
   use module_domain, only : get_ijk_from_grid, program_name
   use da_control,    only : use_radarobs, use_rad, crtm_cloud, &
-                            use_radar_rhv, use_radar_rqv
+                            use_radar_rhv, use_radar_rqv, use_radar_rnr
   use module_state_description, only : p_qv, p_qc, p_qr, p_qi, &
-                                       p_qs, p_qg, &
+                                       p_qs, p_qg, p_qnr, f_qnr, &
                                        f_qc, f_qr, f_qi, f_qs, f_qg
   use module_model_constants, only: R_d, R_v, T0
 #if (WRF_CHEM == 1)
@@ -1172,6 +1172,60 @@ if ( cloud_cv_options >= 2 ) then ! update qci, qsn, qgr
 #endif
 
    end if ! f_qg
+
+   if ( f_qnr .and. use_cv_nr .and. use_radar_rnr) then
+!
+!  update QNRAIN
+!
+#ifdef DM_PARALLEL
+      if (rootproc) then
+         allocate( globbuf((ide-1-ids+3)*(jde-1-jds+3)*(kde-1-kds+3)))
+      else
+         allocate( globbuf( 1 ) )
+      endif
+      globbuf=0.0
+      CALL wrf_patch_to_global_double ( grid%scalar(:,:,:,p_qnr), globbuf, 1, '', 'xyz' ,     &
+                                    ids, ide-1,          jds, jde-1,          kds, kde-1, &
+                                    ims, ime,            jms, jme,            kms, kme,   &
+                                    ips, min(ipe,ide-1), jps, min(jpe,jde-1), kps, kpe-1  )
+#endif
+      if (rootproc) then
+         do k= 1,nsig_regional
+            do j= 1,nlat_regional
+               do i= 1,nlon_regional
+#ifdef DM_PARALLEL
+                  field3(i,j,k)=globbuf(i+(j-1)*(nlon_regional+1)+(k-1)*(nlon_regional+1)*(nlat_regional+1))
+#else
+                  field3(i,j,k)=grid%scalar(i,j,k,p_qnr)
+#endif
+               end do
+            end do
+         end do
+         rmse_var='QNRAIN'
+         call ext_ncd_get_var_info (dh1,trim(rmse_var),ndim1,ordering,staggering, &
+              start_index,end_index1, WrfType, ierr    )
+!        write(6,*)' rmse_var=',trim(rmse_var)
+!        write(6,*)' ordering=',ordering
+!        write(6,*)' WrfType,WRF_REAL=',WrfType,WRF_REAL
+!        write(6,*)' ndim1=',ndim1
+!        write(6,*)' staggering=',staggering
+!        write(6,*)' start_index=',start_index
+!        write(6,*)' end_index1=',end_index1
+         call ext_ncd_write_field(dh1,DateStr1,TRIM(rmse_var),         &
+                                 field3,WRF_REAL,0,0,0,ordering,       &
+                                 staggering, dimnames ,                &
+                                 start_index,end_index1,               & !dom
+                                 start_index,end_index1,               & !mem
+                                 start_index,end_index1,               & !pat
+                                 ierr                                 )
+      end if  ! end of rootproc
+
+#ifdef DM_PARALLEL
+      deallocate(globbuf)
+#endif
+
+   end if ! f_qnr
+
 end if ! cloud_cv_options >= 2
 !-------------End of update QCLOUD, QRAIN, QICE, QSNOW & QGROUP
 

@@ -138,9 +138,31 @@ subroutine da_scan_obs_radar (iv, filename, grid)
             ! height
             platform%each (i) = radar_each_level_type(missing_r, missing, -1.0,&
                field_type(missing_r, missing, missing_r, missing, missing_r), & ! rv
-               field_type(missing_r, missing, missing_r, missing, missing_r))   ! rf
+               field_type(missing_r, missing, missing_r, missing, missing_r), & ! rf
+               field_type(missing_r, missing, missing_r, missing, missing_r), & ! zdr
+               field_type(missing_r, missing, missing_r, missing, missing_r), & ! kdp
+               field_type(missing_r, missing, missing_r, missing, missing_r))   ! cc
 
-            read (unit = iunit, fmt = '(3X, F12.1, 2(F12.3,I4,F12.3,2X))', iostat = iost) &
+	    if ( use_dualpol_radar ) then
+               read (unit = iunit, fmt = '(3X, F12.1, 5(F12.3,I4,F12.3,2X))') &
+                             platform % each (i) % height,            &
+                             platform % each (i) % rv  % inv,         & ! rv
+                             platform % each (i) % rv  % qc,          &
+                             platform % each (i) % rv  % error,       &
+                             platform % each (i) % rf  % inv,         & ! rf
+                             platform % each (i) % rf  % qc,          &
+                             platform % each (i) % rf  % error,       &
+                             platform % each (i) % zdr % inv,         & ! zdr
+                             platform % each (i) % zdr % qc,          &
+                             platform % each (i) % zdr % error,       &
+                             platform % each (i) % kdp % inv,         & ! kdp
+                             platform % each (i) % kdp % qc,          &
+                             platform % each (i) % kdp % error,       &
+                             platform % each (i) % cc  % inv,         & ! cc
+                             platform % each (i) % cc  % qc,          &
+                             platform % each (i) % cc  % error
+            else  
+               read (unit = iunit, fmt = '(3X, F12.1, 2(F12.3,I4,F12.3,2X))', iostat = iost) &
                              platform % each (i) % height,           &
                              platform % each (i) % rv % inv,         &
                              platform % each (i) % rv % qc,          &
@@ -148,13 +170,14 @@ subroutine da_scan_obs_radar (iv, filename, grid)
                              platform % each (i) % rf % inv,         &
                              platform % each (i) % rf % qc,          &
                              platform % each (i) % rf % error
+            end if
 
-         if (iost /= 0) then
-            write(unit=message(1),fmt='(A)')'Error reading next level for '
-            write(unit=message(2),fmt='(A)')char_ned
-            write(unit=message(3),fmt='(A,I6,A,I6)')'Observation number ',j,' out of ',platform % stn % numobs
-            call da_error(__FILE__,__LINE__,message(1:3))
-         end if
+            if (iost /= 0) then
+               write(unit=message(1),fmt='(A)')'Error reading next level for '
+               write(unit=message(2),fmt='(A)')char_ned
+               write(unit=message(3),fmt='(A,I6,A,I6)')'Observation number ',j,' out of ',platform % stn % numobs
+               call da_error(__FILE__,__LINE__,message(1:3))
+            end if
 
             if (platform % each (i) % rv % error == 0.0) then
                  platform % each (i) % rv % error  = 1.0
@@ -164,7 +187,7 @@ subroutine da_scan_obs_radar (iv, filename, grid)
                  platform % each (i) % rf % error  = 1.0
             end if
 
-            if (platform % each (i) % rv % inv   == missing_r .or. &
+	    if (platform % each (i) % rv % inv   == missing_r .or. &
                 platform % each (i) % rv % error == missing_r) then
                 platform % each (i) % rv % qc     = missing_data
             end if
@@ -172,6 +195,35 @@ subroutine da_scan_obs_radar (iv, filename, grid)
             if (platform % each (i) % rf % inv   == missing_r .or. &
                 platform % each (i) % rf % error == missing_r) then
                 platform % each (i) % rf % qc     = missing_data
+            end if
+
+	    if ( use_dualpol_radar ) then
+	       if (platform % each (i) % zdr % error == 0.0) then
+                    platform % each (i) % zdr % error  = 1.0
+               end if
+
+               if (platform % each (i) % kdp % error == 0.0) then
+                    platform % each (i) % kdp % error  = 1.0
+               end if
+
+	       if (platform % each (i) % cc % error == 0.0) then
+                    platform % each (i) % cc % error  = 1.0
+               end if
+
+               if (platform % each (i) % zdr % inv   == missing_r .or. &
+                   platform % each (i) % zdr % error == missing_r) then
+                   platform % each (i) % zdr % qc     = missing_data
+               end if
+
+               if (platform % each (i) % kdp % inv   == missing_r .or. &
+                   platform % each (i) % kdp % error == missing_r) then
+                   platform % each (i) % kdp % qc     = missing_data
+               end if
+
+	       if (platform % each (i) % cc % inv   == missing_r .or. &
+                   platform % each (i) % cc % error == missing_r) then
+                   platform % each (i) % cc % qc     = missing_data
+               end if
             end if
 
          end do

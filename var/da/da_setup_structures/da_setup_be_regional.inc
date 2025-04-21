@@ -71,6 +71,7 @@ subroutine da_setup_be_regional(xb, be, grid)
    real*8, allocatable           :: be9_eval_loc(:,:)     ! Temp arrays.
    real*8, allocatable           :: be10_eval_loc(:,:)    ! Temp arrays.
    real*8, allocatable           :: be11_eval_loc(:,:)    ! Temp arrays.
+   real*8, allocatable           :: be12_eval_loc(:,:)    ! Temp arrays.
 
    real*8, allocatable           :: be1_eval_glo(:)       ! Global Eigenvalues.
    real*8, allocatable           :: be2_eval_glo(:)       ! Global Eigenvalues.
@@ -84,6 +85,7 @@ subroutine da_setup_be_regional(xb, be, grid)
    real*8, allocatable           :: be9_eval_glo(:)       ! Global Eigenvalues.
    real*8, allocatable           :: be10_eval_glo(:)      ! Global Eigenvalues.
    real*8, allocatable           :: be11_eval_glo(:)      ! Global Eigenvalues.
+   real*8, allocatable           :: be12_eval_glo(:)      ! Global Eigenvalues.
 
    real*8, allocatable           :: alpha_val(:)          ! Global Eigenvalues.
 
@@ -99,6 +101,7 @@ subroutine da_setup_be_regional(xb, be, grid)
    real*8, allocatable           :: be9_evec_loc(:,:,:)   ! Local Eigenvectors.
    real*8, allocatable           :: be10_evec_loc(:,:,:)  ! Local Eigenvectors.
    real*8, allocatable           :: be11_evec_loc(:,:,:)  ! Local Eigenvectors.
+   real*8, allocatable           :: be12_evec_loc(:,:,:)  ! Local Eigenvectors.
 
    real*8, allocatable           :: be1_evec_glo(:,:)     ! Global Eigenvectors.
    real*8, allocatable           :: be2_evec_glo(:,:)     ! Global Eigenvectors.
@@ -112,7 +115,7 @@ subroutine da_setup_be_regional(xb, be, grid)
    real*8, allocatable           :: be9_evec_glo(:,:)     ! Global Eigenvectors.
    real*8, allocatable           :: be10_evec_glo(:,:)    ! Global Eigenvectors.
    real*8, allocatable           :: be11_evec_glo(:,:)    ! Global Eigenvectors.
-
+   real*8, allocatable           :: be12_evec_glo(:,:)    ! Global Eigenvectors.
 
    real*8, allocatable           :: alpha_evec(:,:)       ! Global Eigenvectors.
 
@@ -128,6 +131,7 @@ subroutine da_setup_be_regional(xb, be, grid)
    real*8, allocatable           :: be9_rf_lengthscale(:)
    real*8, allocatable           :: be10_rf_lengthscale(:)
    real*8, allocatable           :: be11_rf_lengthscale(:)
+   real*8, allocatable           :: be12_rf_lengthscale(:)
 
    real*8, allocatable           :: alpha_rf_lengthscale(:)
    real*8, allocatable           :: alpha_rf_scale_factor(:)
@@ -138,11 +142,11 @@ subroutine da_setup_be_regional(xb, be, grid)
 #if (WRF_CHEM == 1)
   integer               :: ispcc              ! chem species index.
   integer               :: num_cv_3d_chem     ! number of 3D chem control variables
-  real*8, allocatable   :: be12_eval_loc(:,:,:)    ! Temp arrays for chem.
-  real*8, allocatable   :: be12_eval_glo(:,:)      ! Global Eigenvalues for chem.
-  real*8, allocatable   :: be12_evec_loc(:,:,:,:)  ! Local Eigenvectors for chem.
-  real*8, allocatable   :: be12_evec_glo(:,:,:)    ! Global Eigenvectors for chem.
-  real*8, allocatable   :: be12_rf_lengthscale(:,:) ! for chem
+  real*8, allocatable   :: be13_eval_loc(:,:,:)    ! Temp arrays for chem.
+  real*8, allocatable   :: be13_eval_glo(:,:)      ! Global Eigenvalues for chem.
+  real*8, allocatable   :: be13_evec_loc(:,:,:,:)  ! Local Eigenvectors for chem.
+  real*8, allocatable   :: be13_evec_glo(:,:,:)    ! Global Eigenvectors for chem.
+  real*8, allocatable   :: be13_rf_lengthscale(:,:) ! for chem
 #endif
 
    character*5                 :: namv(5)=(/"psi  ","chi_u","t_u  ","rh   ","ps_u "/)
@@ -301,6 +305,10 @@ if ( jb_factor > 0.0 ) then
    num_cv_2d       = 1 ! Ps_u
    if ( cloud_cv_options >= 2 ) then
       num_cv_3d_extra = 5 ! 5 hydrometeors, qc,qr,qi,qs,qg
+      if ( use_cv_nr ) num_cv_3d_extra = num_cv_3d_extra + 1 ! clouds+nr
+   end if
+   if ( use_cv_w ) then
+      num_cv_3d_extra = num_cv_3d_extra + 1 ! clouds(+nr)+w
    end if
 #if (WRF_CHEM == 1)
    select case ( chem_cv_options )
@@ -314,13 +322,10 @@ if ( jb_factor > 0.0 ) then
       num_cv_3d_chem = 19
    end select
    if ( chem_cv_options >= 1 ) then
-      allocate (be % v12 (num_cv_3d_chem) )
+      allocate (be % v13 (num_cv_3d_chem) )
       num_cv_3d_extra = num_cv_3d_extra + num_cv_3d_chem
    endif    ! ( chem_cv_options >= 1 )
 #endif
-   if ( use_cv_w ) then
-      num_cv_3d_extra = num_cv_3d_extra + 1 ! clouds+w
-   end if
 
 !-----------for interpolating CV5--------------------------------------------------------------
 ! Write out the interpolated CV5 BE:
@@ -577,15 +582,18 @@ if ( jb_factor > 0.0 ) then
       allocate (be8_eval_loc  (1:nj,1:nk))
       allocate (be9_eval_loc  (1:nj,1:nk))
       allocate (be10_eval_loc (1:nj,1:nk))
+      if ( use_cv_nr ) allocate (be11_eval_loc (1:nj,1:nk))
    end if
+
+   if ( use_cv_w ) then
+      allocate (be12_eval_loc (1:nj,1:nk))
+   end if
+
 #if (WRF_CHEM == 1)
    if ( chem_cv_options >= 10 ) then
-      allocate (be12_eval_loc  (num_cv_3d_chem,1:nj,1:nk))
+      allocate (be13_eval_loc  (num_cv_3d_chem,1:nj,1:nk))
    end if
 #endif
-   if ( use_cv_w ) then
-      allocate (be11_eval_loc (1:nj,1:nk))
-   end if
 
    if (vert_corr == vert_corr_2) then
 
@@ -601,17 +609,18 @@ if ( jb_factor > 0.0 ) then
          allocate (be8_eval_glo(1:nk))
          allocate (be9_eval_glo(1:nk))
          allocate (be10_eval_glo(1:nk))
+	 if ( use_cv_nr ) allocate (be11_eval_glo(1:nk))
+      end if
+
+      if ( use_cv_w ) then
+         allocate (be12_eval_glo(1:nk))
       end if
 
 #if (WRF_CHEM == 1)
       if ( chem_cv_options >= 10 ) then
-         allocate (be12_eval_glo(num_cv_3d_chem,1:nk))
+         allocate (be13_eval_glo(num_cv_3d_chem,1:nk))
       end if
 #endif
-
-      if ( use_cv_w ) then
-         allocate (be11_eval_glo(1:nk))
-      end if
 
       allocate (be1_evec_loc(1:nj,1:nk,1:nk))
       allocate (be2_evec_loc(1:nj,1:nk,1:nk))
@@ -625,15 +634,18 @@ if ( jb_factor > 0.0 ) then
          allocate (be8_evec_loc (1:nj,1:nk,1:nk))
          allocate (be9_evec_loc (1:nj,1:nk,1:nk))
          allocate (be10_evec_loc(1:nj,1:nk,1:nk))
+         if ( use_cv_nr ) allocate (be11_evec_loc(1:nj,1:nk,1:nk))
       end if
+
+      if ( use_cv_w ) then
+         allocate (be12_evec_loc(1:nj,1:nk,1:nk))
+      end if
+
 #if (WRF_CHEM == 1)
       if ( chem_cv_options >= 10 ) then
-         allocate (be12_evec_loc (num_cv_3d_chem,1:nj,1:nk,1:nk))
+         allocate (be13_evec_loc (num_cv_3d_chem,1:nj,1:nk,1:nk))
       end if
 #endif
-      if ( use_cv_w ) then
-         allocate (be11_evec_loc(1:nj,1:nk,1:nk))
-      end if
 
       allocate (be1_evec_glo(1:nk,1:nk))
       allocate (be2_evec_glo(1:nk,1:nk))
@@ -647,17 +659,18 @@ if ( jb_factor > 0.0 ) then
          allocate (be8_evec_glo (1:nk,1:nk))
          allocate (be9_evec_glo (1:nk,1:nk))
          allocate (be10_evec_glo(1:nk,1:nk))
+         if ( use_cv_nr ) allocate (be11_evec_glo(1:nk,1:nk))
+      end if
+
+      if ( use_cv_w ) then
+         allocate (be12_evec_glo(1:nk,1:nk))
       end if
 
 #if (WRF_CHEM == 1)
       if ( chem_cv_options >= 10 ) then
-         allocate (be12_evec_glo(num_cv_3d_chem,1:nk,1:nk))
+         allocate (be13_evec_glo(num_cv_3d_chem,1:nk,1:nk))
       end if
 #endif
-
-      if ( use_cv_w ) then
-         allocate (be11_evec_glo(1:nk,1:nk))
-      end if
 
    end if
 
@@ -668,15 +681,19 @@ if ( jb_factor > 0.0 ) then
          allocate ( be8_rf_lengthscale(1:kz))
          allocate ( be9_rf_lengthscale(1:kz))
          allocate (be10_rf_lengthscale(1:kz))
+         if ( use_cv_nr ) allocate (be11_rf_lengthscale(1:kz))
       end if
+
+      if ( use_cv_w ) then
+         allocate (be12_rf_lengthscale(1:kz))
+      end if
+
 #if (WRF_CHEM == 1)
       if ( chem_cv_options >= 10 ) then
-         allocate (be12_rf_lengthscale(num_cv_3d_chem,1:kz))
+         allocate (be13_rf_lengthscale(num_cv_3d_chem,1:kz))
       end if
 #endif
-      if ( use_cv_w ) then
-         allocate (be11_rf_lengthscale(1:kz))
-      end if
+
    end if
 
    if ( cloud_cv_options == 3 ) then
@@ -691,9 +708,13 @@ if ( jb_factor > 0.0 ) then
       be8_eval_glo        = 1.0e-6
       be9_eval_glo        = 1.0e-6
       be10_eval_glo       = 1.0e-6
+      if ( use_cv_nr ) then
+         be % v11 % name     = "qnrain"
+         be11_eval_glo       = 1000.0
+      end if
       if ( use_cv_w ) then
-         be % v11 % name     = "w"
-         be11_eval_glo       = 1.0
+         be % v12 % name     = "w"
+         be12_eval_glo       = 1.0
       end if
       if ( use_rf ) then
          be6_rf_lengthscale  = 1.0
@@ -701,8 +722,11 @@ if ( jb_factor > 0.0 ) then
          be8_rf_lengthscale  = 1.0
          be9_rf_lengthscale  = 1.0
          be10_rf_lengthscale = 1.0
-         if ( use_cv_w ) then
+	 if ( use_cv_nr ) then
             be11_rf_lengthscale = 1.0
+         end if
+         if ( use_cv_w ) then
+            be12_rf_lengthscale = 1.0
          end if
       end if
    end if
@@ -847,21 +871,30 @@ if ( jb_factor > 0.0 ) then
                be10_eval_loc(j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
+	 case ('qnrain' )
+            be % v11 % name = trim(adjustl(variable))
+            !read (be_unit) nk, num_bins2d
+            read (be_unit)  be11_evec_glo
+            read (be_unit)  be11_eval_glo
+            read (be_unit)  evec_loc
+            read (be_unit)  eval_loc
+            do j=1,nj
+               b = bin2d(1,j)
+               be11_evec_loc(j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be11_eval_loc(j,1:nk  ) = eval_loc(1:nk,b)
+            end do
+
          case ('w' )
-           !if ( use_cv_w ) then
-           ! if ( trim(adjustl(variable)) == 'w' ) then
-               be % v11 % name = trim(adjustl(variable))
-               read (be_unit)  be11_evec_glo
-               read (be_unit)  be11_eval_glo
-               read (be_unit)  evec_loc
-               read (be_unit)  eval_loc
-               do j=1,nj
-                  b = bin2d(1,j)
-                  be11_evec_loc(j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-                  be11_eval_loc(j,1:nk  ) = eval_loc(1:nk,b)
-               end do
-           ! end if
-           !end if
+            be % v12 % name = trim(adjustl(variable))
+            read (be_unit)  be12_evec_glo
+            read (be_unit)  be12_eval_glo
+            read (be_unit)  evec_loc
+            read (be_unit)  eval_loc
+            do j=1,nj
+               b = bin2d(1,j)
+               be12_evec_loc(j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be12_eval_loc(j,1:nk  ) = eval_loc(1:nk,b)
+            end do
 
          case default;
             message(1)=' Read problem in eigen vectors/values in BE file '
@@ -887,266 +920,250 @@ if ( jb_factor > 0.0 ) then
 
          case ('dust_1' )
             ispcc=p_dust_1-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('dust_2' )
             ispcc=p_dust_2-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('dust_3' )
             ispcc=p_dust_3-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('dust_4' )
             ispcc=p_dust_4-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('seas_1' )
             ispcc=p_seas_1-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('seas_2' )
             ispcc=p_seas_2-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('seas_3' )
             ispcc=p_seas_3-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('seas_4' )
             ispcc=p_seas_4-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('oc1' )
             ispcc=p_oc1-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('oc2' )
             ispcc=p_oc2-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('bc1' )
             ispcc=p_bc1-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('bc2' )
             ispcc=p_bc2-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('so2' )
             ispcc=p_so2-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('no2' )
             ispcc=p_no2-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('o3' )
             ispcc=p_o3-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('co' )
             ispcc=p_co-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('sulf' )
             ispcc=p_sulf-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('p25' )
             ispcc=p_p25-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('p10' )
             ispcc=p_p10-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
-
-         case ('w' )
-           !if ( use_cv_w ) then
-           ! if ( trim(adjustl(variable)) == 'w' ) then
-               be % v11 % name = trim(adjustl(variable))
-               read (be_unit)  be11_evec_glo
-               read (be_unit)  be11_eval_glo
-               read (be_unit)  evec_loc
-               read (be_unit)  eval_loc
-               do j=1,nj
-                  b = bin2d(1,j)
-                  be11_evec_loc(j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-                  be11_eval_loc(j,1:nk  ) = eval_loc(1:nk,b)
-               end do
-           ! end if
-           !end if
 
          case default;
             message(1)=' Read problem in eigen vectors/values in BE file '
@@ -1159,7 +1176,6 @@ if ( jb_factor > 0.0 ) then
       print*,"reading variables for chem_cv_options=10 is done"
    end if ! chem_cv_options=10
 
-
    if ( chem_cv_options == 20 ) then
       print*,"chem_cv_options == 20 variables from id ",num_cv_3d_basic+1 ,"to id", num_cv_3d_basic+num_cv_3d_extra
       do i = num_cv_3d_basic+1 , num_cv_3d_basic+num_cv_3d_extra
@@ -1170,485 +1186,471 @@ if ( jb_factor > 0.0 ) then
 
          case ('bc_1' )
             ispcc=p_bc_a01-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)                                                                                  
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)                                                                                  
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('bc_2' )
             ispcc=p_bc_a02-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('bc_3' )
             ispcc=p_bc_a03-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('bc_4' )
             ispcc=p_bc_a04-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('oc_1' )
             ispcc=p_oc_a01-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('oc_2' )
             ispcc=p_oc_a02-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('oc_3' )
             ispcc=p_oc_a03-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('oc_4' )
             ispcc=p_oc_a04-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('so4_1' )
             ispcc=p_so4_a01-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('so4_2' )
             ispcc=p_so4_a02-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('so4_3' )
             ispcc=p_so4_a03-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('so4_4' )
             ispcc=p_so4_a04-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('no3_1' )
             ispcc=p_no3_a01-1                                                                                                                                 
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('no3_2' )
             ispcc=p_no3_a02-1                                                                                                                                 
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('no3_3' )
             ispcc=p_no3_a03-1                                                                                                                                 
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('no3_4' )
             ispcc=p_no3_a04-1                                                                                                                                 
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('nh4_1' )
             ispcc=p_nh4_a01-1                                                                                                                                 
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('nh4_2' )
             ispcc=p_nh4_a02-1                                                                                                                                 
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('nh4_3' )
             ispcc=p_nh4_a03-1                                                                                                                                 
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('nh4_4' )
             ispcc=p_nh4_a04-1                                                                                                                                 
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('cl_1' )
             ispcc=p_cl_a01-1                                                                                                                                 
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('cl_2' )
             ispcc=p_cl_a02-1                                                                                                                                 
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('cl_3' )
             ispcc=p_cl_a03-1                                                                                                                                 
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('cl_4' )
             ispcc=p_cl_a04-1                                                                                                                                 
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('na_1' )
             ispcc=p_na_a01-1                                                                                                                                 
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('na_2' )
             ispcc=p_na_a02-1                                                                                                                                 
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('na_3' )
             ispcc=p_na_a03-1                                                                                                                                 
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('na_4' )
             ispcc=p_na_a04-1                                                                                                                                 
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('oin_1' )
             ispcc=p_oin_a01-1                                                                                                                                 
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('oin_2' )
             ispcc=p_oin_a02-1                                                                                                                                 
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('oin_3' )
             ispcc=p_oin_a03-1                                                                                                                                 
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('oin_4' )
             ispcc=p_oin_a04-1                                                                                                                                 
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('so2' )
             ispcc=p_so2-1                                                                                                                                 
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('no2' )
             ispcc=p_no2-1                                                                                                                                 
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('o3' )
             ispcc=p_o3-1                                                                                                                                 
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('co' )
             ispcc=p_co-1                                                                                                                                 
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
-
-         case ('w' )
-         if ( use_cv_w ) then
-               be % v11 % name = trim(adjustl(variable))
-               read (be_unit)  be11_evec_glo
-               read (be_unit)  be11_eval_glo
-               read (be_unit)  evec_loc
-               read (be_unit)  eval_loc
-               do j=1,nj
-                  b = bin2d(1,j)
-                  be11_evec_loc(j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-                  be11_eval_loc(j,1:nk  ) = eval_loc(1:nk,b)
-               end do
-         end if
 
          case default;
             message(1)=' Read problem in eigen vectors/values in BE file '
@@ -1673,523 +1675,511 @@ if ( jb_factor > 0.0 ) then
 
          case ('so4aj' )
             ispcc=p_so4aj-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('so4ai' )
             ispcc=p_so4ai-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('nh4aj' )
             ispcc=p_nh4aj-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('nh4ai' )
             ispcc=p_nh4ai-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('no3aj' )
             ispcc=p_no3aj-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('no3ai' )
             ispcc=p_no3ai-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('naaj' )
             ispcc=p_naaj-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('naai' )
             ispcc=p_naai-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('claj' )
             ispcc=p_claj-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('clai' )
             ispcc=p_clai-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('asoa1j' )
             ispcc=p_asoa1j-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('asoa1i' )
             ispcc=p_asoa1i-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('asoa2j' )
             ispcc=p_asoa2j-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('asoa2i' )
             ispcc=p_asoa2i-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('asoa3j' )
             ispcc=p_asoa3j-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('asoa3i' )
             ispcc=p_asoa3i-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('asoa4j' )
             ispcc=p_asoa4j-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('asoa4i' )
             ispcc=p_asoa4i-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('bsoa1j' )
             ispcc=p_bsoa1j-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('bsoa1i' )
             ispcc=p_bsoa1i-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('bsoa2j' )
             ispcc=p_bsoa2j-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('bsoa2i' )
             ispcc=p_bsoa2i-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('bsoa3j' )
             ispcc=p_bsoa3j-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('bsoa3i' )
             ispcc=p_bsoa3i-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('bsoa4j' )
             ispcc=p_bsoa4j-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('bsoa4i' )
             ispcc=p_bsoa4i-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('orgpaj' )
             ispcc=p_orgpaj-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('orgpai' )
             ispcc=p_orgpai-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('ecj' )
             ispcc=p_ecj-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('eci' )
             ispcc=p_eci-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('p25j' )
             ispcc=p_p25j-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('p25i' )
             ispcc=p_p25i-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('antha' )
             ispcc=p_antha-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('seas' )
             ispcc=p_seas-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('soila' )
             ispcc=p_soila-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('so2' )
             ispcc=p_so2-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('no2' )
             ispcc=p_no2-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('o3' )
             ispcc=p_o3-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
          case ('co' )
             ispcc=p_co-1
-            be % v12(ispcc) % name = trim(adjustl(variable))
-            read (be_unit)  be12_evec_glo(ispcc,:,:)
-            read (be_unit)  be12_eval_glo(ispcc,:)
+            be % v13(ispcc) % name = trim(adjustl(variable))
+            read (be_unit)  be13_evec_glo(ispcc,:,:)
+            read (be_unit)  be13_eval_glo(ispcc,:)
             read (be_unit)  evec_loc
             read (be_unit)  eval_loc
             do j=1,nj
                b = bin2d(1,j)
-               be12_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-               be12_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
+               be13_evec_loc(ispcc,j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
+               be13_eval_loc(ispcc,j,1:nk  ) = eval_loc(1:nk,b)
             end do
 
-         case ('w' )
-         if ( use_cv_w ) then
-               be % v11 % name = trim(adjustl(variable))
-               read (be_unit)  be11_evec_glo
-               read (be_unit)  be11_eval_glo
-               read (be_unit)  evec_loc
-               read (be_unit)  eval_loc
-               do j=1,nj
-                  b = bin2d(1,j)
-                  be11_evec_loc(j,1:nk,1:nk) = evec_loc(1:nk,1:nk,b)
-                  be11_eval_loc(j,1:nk  ) = eval_loc(1:nk,b)
-               end do
          end if
 
          case default;
@@ -2247,7 +2237,7 @@ if ( jb_factor > 0.0 ) then
       if ( cloud_cv_options == 1 ) be % v4 % name = 'qt   '
    end if
 
-   message(1:5) = ''
+   message(1:3) = ''
    write (unit=message(1),fmt='(3x,A,i2)') 'cloud_cv_options = ', cloud_cv_options
 #if (WRF_CHEM == 1)
    write (unit=message(1),fmt='(3x,A,i3)') 'chem_cv_options = ', chem_cv_options
@@ -2257,23 +2247,24 @@ if ( jb_factor > 0.0 ) then
       trim(be % v3 % name), ' and ', trim(be % v5 % name)
    write (unit=message(3),fmt='(3x,A,A)') &
       'WRFDA Humidity control variable is ', trim(be % v4 % name)
+   call da_message(message(1:3))
    if ( cloud_cv_options >= 2 ) then
-      write (unit=message(4),fmt='(3x,A,10A)') 'WRFDA hydrometeor control variables are: ', &
+      write (unit=message(1),fmt='(3x,A,10A)') 'WRFDA hydrometeor control variables are: ', &
          trim(be % v6 % name), ', ', trim(be % v7 % name), ', ', &
          trim(be % v8 % name), ', ', trim(be % v9 % name), ', and ', &
          trim(be % v10 % name)
+      call da_message(message(1:1))
+      if ( use_cv_nr ) then
+	 write (unit=message(1),fmt='(3x,A)') &
+            'qnrain control variable is activated'
+	 call da_message(message(1:1))
+      end if
    end if
-!#if (WRF_CHEM == 1)
-!   if ( chem_cv_options >= 10 ) then
-!      write (unit=message(4),fmt='(3x,A,10A)') 'WRFDA chem control variables are: ', &
-!                                                be % v12(:) % name
-!   end if
-!#endif
    if ( use_cv_w ) then
-      write (unit=message(5),fmt='(3x,A)') &
+      write (unit=message(1),fmt='(3x,A)') &
          'w control variable is activated'
    end if
-   call da_message(message(1:5))
+   call da_message(message(1:1))
 
    if (use_rf) then
 
@@ -2290,7 +2281,6 @@ if ( jb_factor > 0.0 ) then
       allocate (be3_rf_lengthscale(1:kz))
       allocate (be4_rf_lengthscale(1:kz))
       allocate (be5_rf_lengthscale(1:1))
-
 
 ! ===================================================================
 ! This is used for do_normalize = .T., I am not sure if it is working 
@@ -2345,12 +2335,10 @@ if ( jb_factor > 0.0 ) then
                read(be_unit) be9_rf_lengthscale
             case ('qgraup')
                read(be_unit) be10_rf_lengthscale
-            case ('w')
-            !if ( use_cv_w ) then
-            !   if ( trim(adjustl(variable)) == 'w' ) then
+	    case ('qnrain')
                read(be_unit) be11_rf_lengthscale
-            !   end if
-            !end if
+            case ('w')
+               read(be_unit) be12_rf_lengthscale
             case default;
                message(1)='Read problem in lengthscales in be.dat'
                write(message(2),'("Trying to read lengthscales for variable ",I0,": ",A)')i,trim(adjustl(variable))
@@ -2367,71 +2355,64 @@ if ( jb_factor > 0.0 ) then
             select case( trim(adjustl(variable)) )
             case ('dust_1')
                ispcc=p_dust_1-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('dust_2')
                ispcc=p_dust_2-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('dust_3')
                ispcc=p_dust_3-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('dust_4')
                ispcc=p_dust_4-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
 
             case ('seas_1')
                ispcc=p_seas_1-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('seas_2')
                ispcc=p_seas_2-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('seas_3')
                ispcc=p_seas_3-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('seas_4')
                ispcc=p_seas_4-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
 
             case ('oc1')
                ispcc=p_oc1-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('oc2')
                ispcc=p_oc2-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('bc1')
                ispcc=p_bc1-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('bc2')
                ispcc=p_bc2-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
 
             case ('so2')
                ispcc=p_so2-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('no2')
                ispcc=p_no2-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('o3')
                ispcc=p_o3-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('co')
                ispcc=p_co-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('sulf')
                ispcc=p_sulf-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('p25')
                ispcc=p_p25-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('p10')
                ispcc=p_p10-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
-
-            case ('w')
-            !if ( use_cv_w ) then
-            !   if ( trim(adjustl(variable)) == 'w' ) then
-               read(be_unit) be11_rf_lengthscale
-            !   end if
-            !end if
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case default;
                message(1)='Read problem in lengthscales in be.dat'
                write(message(2),'("Trying to read lengthscales for variable ",I0,": ",A)')i,trim(adjustl(variable))
@@ -2447,125 +2428,121 @@ if ( jb_factor > 0.0 ) then
             select case( trim(adjustl(variable)) )
             case ('bc_1')
                ispcc=p_bc_a01-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('bc_2')
                ispcc=p_bc_a02-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('bc_3')
                ispcc=p_bc_a03-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('bc_4')
                ispcc=p_bc_a04-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
 
             case ('oc_1')
                ispcc=p_oc_a01-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('oc_2')
                ispcc=p_oc_a02-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('oc_3')
                ispcc=p_oc_a03-1                                                                                                                         
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('oc_4')
                ispcc=p_oc_a04-1                                                                                                                         
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
 
             case ('so4_1')
                ispcc=p_so4_a01-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('so4_2')
                ispcc=p_so4_a02-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('so4_3')
                ispcc=p_so4_a03-1                                                                                         
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('so4_4')
                ispcc=p_so4_a04-1                                                                                         
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
 
             case ('no3_1')
                ispcc=p_no3_a01-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('no3_2')
                ispcc=p_no3_a02-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('no3_3')
                ispcc=p_no3_a03-1                                                                                             
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('no3_4')
                ispcc=p_no3_a04-1                                                                                             
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
 
             case ('nh4_1')
                ispcc=p_nh4_a01-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('nh4_2')
                ispcc=p_nh4_a02-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('nh4_3')
                ispcc=p_nh4_a03-1                                                                                 
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('nh4_4')
                ispcc=p_nh4_a04-1                                                                                 
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
 
             case ('cl_1')
                ispcc=p_cl_a01-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('cl_2')
                ispcc=p_cl_a02-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('cl_3')
                ispcc=p_cl_a03-1 
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('cl_4')
                ispcc=p_cl_a04-1 
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
 
             case ('na_1')
                ispcc=p_na_a01-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('na_2')
                ispcc=p_na_a02-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('na_3')
                ispcc=p_na_a03-1                          
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('na_4')
                ispcc=p_na_a04-1                          
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
 
             case ('oin_1')
                ispcc=p_oin_a01-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('oin_2')
                ispcc=p_oin_a02-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('oin_3')
                ispcc=p_oin_a03-1                                                                                                 
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('oin_4')
                ispcc=p_oin_a04-1                                                                                                 
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
 
             case ('so2')
                ispcc=p_so2-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('no2')
                ispcc=p_no2-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('o3')
                ispcc=p_o3-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('co')
                ispcc=p_co-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
 
-            case ('w')
-            if ( use_cv_w ) then
-               read(be_unit) be11_rf_lengthscale
-            end if
             case default;
                message(1)='Read problem in lengthscales in be.dat'
                write(message(2),'("Trying to read lengthscales for variable ",I0,": ",A)')i,trim(adjustl(variable))
@@ -2581,125 +2558,121 @@ if ( jb_factor > 0.0 ) then
             select case( trim(adjustl(variable)) )
             case ('so4aj')
                ispcc=p_so4aj-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('so4ai' )
                ispcc=p_so4ai-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('nh4aj' )
                ispcc=p_nh4aj-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('nh4ai' )
                ispcc=p_nh4ai-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('no3aj' )
                ispcc=p_no3aj-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('no3ai' )
                ispcc=p_no3ai-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('naaj' )
                ispcc=p_naaj-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('naai' )
                ispcc=p_naai-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('claj' )
                ispcc=p_claj-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('clai' )
                ispcc=p_clai-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('asoa1j' )
                ispcc=p_asoa1j-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('asoa1i' )
                ispcc=p_asoa1i-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('asoa2j' )
                ispcc=p_asoa2j-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('asoa2i' )
                ispcc=p_asoa2i-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('asoa3j' )
                ispcc=p_asoa3j-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('asoa3i' )
                ispcc=p_asoa3i-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('asoa4j' )
                ispcc=p_asoa4j-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('asoa4i' )
                ispcc=p_asoa4i-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('bsoa1j' )
                ispcc=p_bsoa1j-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('bsoa1i' )
                ispcc=p_bsoa1i-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('bsoa2j' )
                ispcc=p_bsoa2j-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('bsoa2i' )
                ispcc=p_bsoa2i-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('bsoa3j' )
                ispcc=p_bsoa3j-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('bsoa3i' )
                ispcc=p_bsoa3i-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('bsoa4j' )
                ispcc=p_bsoa4j-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('bsoa4i' )
                ispcc=p_bsoa4i-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('orgpaj' )
                ispcc=p_orgpaj-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('orgpai' )
                ispcc=p_orgpai-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('ecj' )
                ispcc=p_ecj-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('eci' )
                ispcc=p_eci-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('p25j' )
                ispcc=p_p25j-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('p25i' )
                ispcc=p_p25i-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('antha' )
                ispcc=p_antha-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('seas' )
                ispcc=p_seas-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('soila' )
                ispcc=p_soila-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('so2' )
                ispcc=p_so2-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('no2' )
                ispcc=p_no2-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('o3' )
                ispcc=p_o3-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case ('co' )
                ispcc=p_co-1
-               read(be_unit) be12_rf_lengthscale(ispcc,:)
-            case ('w')
-            if ( use_cv_w ) then
-               read(be_unit) be11_rf_lengthscale
-            end if
+               read(be_unit) be13_rf_lengthscale(ispcc,:)
             case default;
                message(1)='Read problem in lengthscales in be.dat'
                write(message(2),'("Trying to read lengthscales for variable ",I0,": ",A)')i,trim(adjustl(variable))
@@ -2738,7 +2711,6 @@ if ( jb_factor > 0.0 ) then
          endif
 
       if (print_detail_be) then
-! Lengthscale variables (except 5!) are arrays of length "kz", so need to account for this in fmt statement
          write(write_fmt,'(A,I0,A)')'(A,',kz,'F10.5)'
          write(unit=message(1),fmt='(A)') 'BE Length scales:'
          write(unit=message(2),fmt=write_fmt) 'be1= ',be1_rf_lengthscale
@@ -2749,24 +2721,20 @@ if ( jb_factor > 0.0 ) then
          call da_message(message(1:6))
 
          if ( cloud_cv_options >= 2 ) then
-            write(unit=message(7),fmt=write_fmt) 'be6= ',be6_rf_lengthscale
-            write(unit=message(8),fmt=write_fmt) 'be7= ',be7_rf_lengthscale
-            write(unit=message(9),fmt=write_fmt) 'be8= ',be8_rf_lengthscale
-            write(unit=message(10),fmt=write_fmt) 'be9= ',be9_rf_lengthscale
-            write(unit=message(11),fmt=write_fmt) 'be10= ',be10_rf_lengthscale
-            call da_message(message(7:11))
+            write(unit=message(1),fmt=write_fmt) 'be6= ',be6_rf_lengthscale
+            write(unit=message(2),fmt=write_fmt) 'be7= ',be7_rf_lengthscale
+            write(unit=message(3),fmt=write_fmt) 'be8= ',be8_rf_lengthscale
+            write(unit=message(4),fmt=write_fmt) 'be9= ',be9_rf_lengthscale
+            write(unit=message(5),fmt=write_fmt) 'be10= ',be10_rf_lengthscale
+            call da_message(message(1:5))
+	    if ( use_cv_nr ) then
+               write(unit=message(1),fmt=write_fmt) 'be11= ',be11_rf_lengthscale
+               call da_message(message(1:1))
+	    end if
          end if
-!#if (WRF_CHEM == 1)
-!         if ( chem_cv_options >= 10 ) then
-!            do i=1,num_cv_3d_chem
-!                write(unit=message(i+6),fmt=write_fmt) 'be12 for ichem ',(i+5),'= ',be12_rf_lengthscale(i,:)
-!            end do
-!            call da_message(message(i+6:num_cv_3d_chem+6))
-!         end if
-!#endif
          if ( use_cv_w ) then
-            write(unit=message(12),fmt=write_fmt) 'be11= ',be11_rf_lengthscale
-            call da_message(message(12:12))
+            write(unit=message(1),fmt=write_fmt) 'be12= ',be12_rf_lengthscale
+            call da_message(message(1:1))
          end if
       end if ! print_detail_be
 
@@ -3023,19 +2991,20 @@ if ( jb_factor > 0.0 ) then
             call da_check_eof_decomposition(be8_eval_glo(:),  be8_evec_glo(:,:),  be % v8 % name)
             call da_check_eof_decomposition(be9_eval_glo(:),  be9_evec_glo(:,:),  be % v9 % name)
             call da_check_eof_decomposition(be10_eval_glo(:), be10_evec_glo(:,:), be % v10 % name)
+	    if ( use_cv_nr ) call da_check_eof_decomposition(be11_eval_glo(:), be11_evec_glo(:,:), be % v11 % name)
+         end if
+
+	 if ( use_cv_w ) then
+            call da_check_eof_decomposition(be12_eval_glo(:), be12_evec_glo(:,:), be % v12 % name)
          end if
 
 #if (WRF_CHEM == 1)
          if ( chem_cv_options >= 10 ) then
             do i=1,num_cv_3d_chem
-                call da_check_eof_decomposition(be12_eval_glo(i,:),  be12_evec_glo(i,:,:),  be % v12(i) % name)
+                call da_check_eof_decomposition(be13_eval_glo(i,:),  be13_evec_glo(i,:,:),  be % v13(i) % name)
             end do
          end if
 #endif
-
-         if ( use_cv_w ) then
-            call da_check_eof_decomposition(be11_eval_glo(:), be11_evec_glo(:,:), be % v11 % name)
-         end if
 
       end if
 
@@ -3052,6 +3021,7 @@ if ( jb_factor > 0.0 ) then
          call da_get_vertical_truncation(max_vert_var8, be8_eval_glo(:), be % v8)
          call da_get_vertical_truncation(max_vert_var9, be9_eval_glo(:), be % v9)
          call da_get_vertical_truncation(max_vert_var10,be10_eval_glo(:),be % v10)
+         if ( use_cv_nr ) call da_get_vertical_truncation(max_vert_var11,be11_eval_glo(:),be % v11)
       else
          if ( jb_factor > 0.0 ) then
             be % v6  % mz = xb % mkz
@@ -3059,39 +3029,40 @@ if ( jb_factor > 0.0 ) then
             be % v8  % mz = xb % mkz
             be % v9  % mz = xb % mkz
             be % v10 % mz = xb % mkz
+	    if ( use_cv_nr ) be % v11 % mz = xb % mkz
          else
             be % v6  % mz = 0
             be % v7  % mz = 0
             be % v8  % mz = 0
             be % v9  % mz = 0
             be % v10 % mz = 0
+	    if ( use_cv_nr ) be % v11 % mz = 0
+         end if
+      end if
+
+      if ( use_cv_w ) then
+         call da_get_vertical_truncation(max_vert_var12,be12_eval_glo(:),be % v12)
+      else
+         if ( jb_factor > 0.0 ) then
+            be % v12 % mz = xb % mkz
+         else
+            be % v12 % mz = 0
          end if
       end if
 
 #if (WRF_CHEM == 1)
       if ( chem_cv_options >= 10 ) then
          do i=1,num_cv_3d_chem
-            call da_get_vertical_truncation(max_vert_var12(i), be12_eval_glo(i,:), be % v12(i))
+            call da_get_vertical_truncation(max_vert_var13(i), be13_eval_glo(i,:), be % v13(i))
          end do
       else
          if ( jb_factor > 0.0 ) then
-            be % v12(:) % mz = xb % mkz
+            be % v13(:) % mz = xb % mkz
          else
-            be % v12(:) % mz = 0
+            be % v13(:) % mz = 0
          end if
       end if
 #endif
-
-      if ( use_cv_w ) then
-         call da_get_vertical_truncation(max_vert_var11,be11_eval_glo(:),be % v11)
-      else
-         if ( jb_factor > 0.0 ) then
-            be % v11 % mz = xb % mkz
-         else
-            be % v11 % mz = 0
-         end if
-      end if
-
 
       if (max_vert_var5 == 0.0) then
          be % v5 % mz = 0
@@ -3117,10 +3088,11 @@ if ( jb_factor > 0.0 ) then
       be % v9 % mz = xb % mkz
       be % v10% mz = xb % mkz
       be % v11% mz = xb % mkz
+      be % v12% mz = xb % mkz
 
 #if (WRF_CHEM == 1)
    if ( chem_cv_options >= 10 ) then
-      be % v12(:) % mz = xb % mkz
+      be % v13(:) % mz = xb % mkz
    end if
 #endif
 
@@ -3161,19 +3133,25 @@ if ( jb_factor > 0.0 ) then
                                          be9_evec_loc, be % v9)
       call da_allocate_background_errors(jy, kz, be10_eval_glo, be10_evec_glo, be10_eval_loc, &
                                          be10_evec_loc, be % v10)
+      if ( use_cv_nr ) then
+         call da_allocate_background_errors(jy, kz, be11_eval_glo, be11_evec_glo, be11_eval_loc, &
+                                            be11_evec_loc, be % v11)
+      end if
    end if
+
+   if ( use_cv_w ) then
+      call da_allocate_background_errors(jy, kz, be12_eval_glo, be12_evec_glo, be12_eval_loc, &
+                                         be12_evec_loc, be % v12)
+   end if
+
 #if (WRF_CHEM == 1)
    if ( chem_cv_options >=10 ) then
       do i=1,num_cv_3d_chem
-         call da_allocate_background_errors(jy, kz, be12_eval_glo(i,:), be12_evec_glo(i,:,:), be12_eval_loc(i,:,:), &
-                                            be12_evec_loc(i,:,:,:), be % v12(i))
+         call da_allocate_background_errors(jy, kz, be13_eval_glo(i,:), be13_evec_glo(i,:,:), be13_eval_loc(i,:,:), &
+                                            be13_evec_loc(i,:,:,:), be % v13(i))
       end do
    end if
 #endif
-   if ( use_cv_w ) then
-      call da_allocate_background_errors(jy, kz, be11_eval_glo, be11_evec_glo, be11_eval_loc, &
-                                         be11_evec_loc, be % v11)
-   end if
 
    if (print_detail_be) then
       write (unit=stdout,fmt='(3x,a,i10)') "b) Finished eigenvector processing!"
@@ -3195,17 +3173,22 @@ if ( jb_factor > 0.0 ) then
          be8_rf_lengthscale(1:kz) =  be8_rf_lengthscale(1:kz) * xb%ds
          be9_rf_lengthscale(1:kz) =  be9_rf_lengthscale(1:kz) * xb%ds
          be10_rf_lengthscale(1:kz)= be10_rf_lengthscale(1:kz) * xb%ds
+         if ( use_cv_nr ) then
+	    be11_rf_lengthscale(1:kz) = be11_rf_lengthscale(1:kz) * xb%ds
+         end if
       end if
+
+      if ( use_cv_w ) then
+         be12_rf_lengthscale(1:kz)= be12_rf_lengthscale(1:kz) * xb%ds
+      end if
+
 #if (WRF_CHEM == 1)
       if ( chem_cv_options >= 10 ) then
          do i=1,num_cv_3d_chem
-            be12_rf_lengthscale(i,1:kz) =  be12_rf_lengthscale(i,1:kz) * xb%ds
+            be13_rf_lengthscale(i,1:kz) =  be13_rf_lengthscale(i,1:kz) * xb%ds
          end do
       end if
 #endif
-      if ( use_cv_w ) then
-         be11_rf_lengthscale(1:kz)= be11_rf_lengthscale(1:kz) * xb%ds
-      end if
 
    else				! use wavelets:
       ! kzs and mzs are used for wavelets
@@ -3290,7 +3273,17 @@ if ( jb_factor > 0.0 ) then
                                          be%v9%name)
          call da_check_eof_decomposition(be%v10%val_g(:), be%v10%evec_g(:,:),&
                                          be%v10%name)
+         if ( use_cv_nr ) then
+            call da_check_eof_decomposition(be%v11%val_g(:), be%v11%evec_g(:,:),&
+                                         be%v11%name)
+	 end if
       end if
+
+      if ( use_cv_w ) then
+         call da_check_eof_decomposition(be%v12%val_g(:), be%v12%evec_g(:,:),&
+                                         be%v12%name)
+      end if
+
 #if (WRF_CHEM == 1)
       if ( chem_cv_options >= 10 ) then
          do i=1,num_cv_3d_chem
@@ -3299,10 +3292,6 @@ if ( jb_factor > 0.0 ) then
          end do
       end if
 #endif
-      if ( use_cv_w ) then
-         call da_check_eof_decomposition(be%v11%val_g(:), be%v11%evec_g(:,:),&
-                                         be%v11%name)
-      end if
 
    end if
 
@@ -3333,20 +3322,24 @@ if ( jb_factor > 0.0 ) then
              write(be_rf_unit) be6_rf_lengthscale, be7_rf_lengthscale, be8_rf_lengthscale, &
                                be9_rf_lengthscale, be10_rf_lengthscale
           end if
-#if (WRF_CHEM == 1)
-          if ( chem_cv_options >= 10 ) then
-            do i=1, num_cv_3d_chem
-               write(be_rf_unit) be % v12(i) % val
-            end do
-            do i=1, num_cv_3d_chem
-               write(be_rf_unit) be12_rf_lengthscale(i,:)
-            end do
-          end if
-#endif
-          if ( use_cv_w ) then
+	  if ( use_cv_nr ) then
              write(be_rf_unit) be%v11%val
              write(be_rf_unit) be11_rf_lengthscale
           end if
+	  if ( use_cv_w ) then
+             write(be_rf_unit) be%v12%val
+             write(be_rf_unit) be12_rf_lengthscale
+          end if
+#if (WRF_CHEM == 1)
+          if ( chem_cv_options >= 10 ) then
+            do i=1, num_cv_3d_chem
+               write(be_rf_unit) be % v13(i) % val
+            end do
+            do i=1, num_cv_3d_chem
+               write(be_rf_unit) be13_rf_lengthscale(i,:)
+            end do
+          end if
+#endif
         end if ! rootproc
 
           if (print_detail_be ) then
@@ -3399,19 +3392,25 @@ if ( jb_factor > 0.0 ) then
                                            xb % ds, be9_rf_lengthscale, be % v9)
          call da_rescale_background_errors(var_scaling10(1), len_scaling10(1), &
                                            xb % ds, be10_rf_lengthscale, be % v10)
+         if ( use_cv_nr ) then
+            call da_rescale_background_errors(var_scaling11(1), len_scaling11(1), &
+                                           xb % ds, be11_rf_lengthscale, be % v11)
+         end if
       end if
+
+      if ( use_cv_w ) then
+         call da_rescale_background_errors(var_scaling12(1), len_scaling12(1), &
+                                           xb % ds, be12_rf_lengthscale, be % v12)
+      end if
+
 #if (WRF_CHEM == 1)
       if ( chem_cv_options >= 10 ) then
        do i=1,num_cv_3d_chem
-         call da_rescale_background_errors(var_scaling12(i), len_scaling12(i), & 
-                                           xb % ds, be12_rf_lengthscale(i,:), be % v12(i))
+         call da_rescale_background_errors(var_scaling13(i), len_scaling13(i), & 
+                                           xb % ds, be13_rf_lengthscale(i,:), be % v13(i))
        end do
       end if
 #endif
-      if ( use_cv_w ) then
-         call da_rescale_background_errors(var_scaling11(1), len_scaling11(1), &
-                                           xb % ds, be11_rf_lengthscale, be % v11)
-      end if
 
    end if ! use_rf
 
@@ -3440,16 +3439,22 @@ if ( jb_factor > 0.0 ) then
           write(be_print_unit,'("mz=",i3,2x,"be%v9%val:"/(10e12.5))') be%v9%mz, be%v9%val(1,:)
           write(be_print_unit,'("mz=",i3,2x,"be%v10%val:"/(10e12.5))') be%v10%mz, be%v10%val(1,:)
        end if
+
+       if ( use_cv_nr ) then
+          write(be_print_unit,'("mz=",i3,2x,"be%v11%val:"/(10e12.5))') be%v11%mz, be%v11%val(1,:)
+       end if
+
+       if ( use_cv_w ) then
+          write(be_print_unit,'("mz=",i3,2x,"be%v12%val:"/(10e12.5))') be%v12%mz, be%v12%val(1,:)
+       end if
+
 #if (WRF_CHEM == 1)
        if ( chem_cv_options >= 10 ) then
         do i=1,num_cv_3d_chem
-          write(be_print_unit,'("mz=",i3,2x,"be%v12%val:"/(10e12.5))') be%v12(i)%mz, be%v12(i)%val(1,:)
+          write(be_print_unit,'("mz=",i3,2x,"be%v13%val:"/(10e12.5))') be%v13(i)%mz, be%v13(i)%val(1,:)
         end do
        end if
 #endif
-       if ( use_cv_w ) then
-          write(be_print_unit,'("mz=",i3,2x,"be%v11%val:"/(10e12.5))') be%v11%mz, be%v11%val(1,:)
-       end if
 
        write(be_print_unit,'(/"scale-length: kz=",i3)') kz
        write(be_print_unit,'("be%v1%rf_alpha:"/(10e12.5))') be % v1 % rf_alpha(:)
@@ -3465,16 +3470,22 @@ if ( jb_factor > 0.0 ) then
           write(be_print_unit,'("be%v9%rf_alpha:"/(10e12.5))')  be % v9 % rf_alpha(:)
           write(be_print_unit,'("be%v10%rf_alpha:"/(10e12.5))') be % v10 % rf_alpha(:)
        end if
-#if (WRF_CHEM == 1)
-       if ( chem_cv_options >= 10 ) then
-        do i=1,num_cv_3d_chem
-          write(be_print_unit,'("be%v12%rf_alpha:"/(10e12.5))')  be % v12(i) % rf_alpha(:)
-        end do
-       end if
-#endif
+
        if ( use_cv_w ) then
           write(be_print_unit,'("be%v11%rf_alpha:"/(10e12.5))') be % v11 % rf_alpha(:)
        end if
+
+       if ( use_cv_w ) then
+          write(be_print_unit,'("be%v12%rf_alpha:"/(10e12.5))') be % v12 % rf_alpha(:)
+       end if
+
+#if (WRF_CHEM == 1)
+       if ( chem_cv_options >= 10 ) then
+        do i=1,num_cv_3d_chem
+          write(be_print_unit,'("be%v13%rf_alpha:"/(10e12.5))')  be % v13(i) % rf_alpha(:)
+        end do
+       end if
+#endif
 
        write(be_print_unit,'(/"scale-length: kz=",i3)') kz
        do i = 1,kz
@@ -3491,14 +3502,17 @@ if ( jb_factor > 0.0 ) then
              write(be_print_unit,'(i3,2x,5e15.5)') i, be6_rf_lengthscale(i), be7_rf_lengthscale(i), &
                                be8_rf_lengthscale(i), be9_rf_lengthscale(i), be10_rf_lengthscale(i)
           enddo
+          if ( use_cv_nr ) then
+             do i = 1,kz
+                write(be_print_unit,'(i3,2x,e15.5)') i, be11_rf_lengthscale(i)
+             enddo
+          end if
        end if
-!#if (WRF_CHEM == 1)
-!       if ( chem_cv_options >= 10 ) then
-!          do i = 1,kz
-!             write(be_print_unit,'(i3,2x,22e15.5)') i, be12_rf_lengthscale(ic,i)
-!          enddo
-!       end if
-!#endif
+       if ( use_cv_w ) then
+             do i = 1,kz
+                write(be_print_unit,'(i3,2x,e15.5)') i, be12_rf_lengthscale(i)
+             enddo
+       end if
 
    endif ! print_detail_be
 
@@ -3522,15 +3536,15 @@ if ( jb_factor > 0.0 ) then
       deallocate (be8_eval_loc)
       deallocate (be9_eval_loc)
       deallocate (be10_eval_loc)
+      if ( use_cv_nr ) deallocate (be11_eval_loc)
    end if
+   if ( use_cv_w )  deallocate (be12_eval_loc)
+
 #if (WRF_CHEM == 1)
    if ( chem_cv_options >= 10 ) then
-      deallocate (be12_eval_loc)
+      deallocate (be13_eval_loc)
    end if
 #endif
-   if ( use_cv_w ) then
-      deallocate (be11_eval_loc)
-   end if
 
    if( use_rf )then
       deallocate (be1_rf_lengthscale)
@@ -3545,15 +3559,16 @@ if ( jb_factor > 0.0 ) then
          deallocate (be8_rf_lengthscale)
          deallocate (be9_rf_lengthscale)
          deallocate (be10_rf_lengthscale)
+         if ( use_cv_nr ) deallocate (be11_rf_lengthscale)
       end if
+   
+      if ( use_cv_w )  deallocate (be12_rf_lengthscale)
+
 #if (WRF_CHEM == 1)
       if ( chem_cv_options >= 10 ) then
-         deallocate (be12_rf_lengthscale)
+         deallocate (be13_rf_lengthscale)
       end if
 #endif
-      if ( use_cv_w ) then
-         deallocate (be11_rf_lengthscale)
-      end if
    endif
 
    if (vert_corr == vert_corr_2) then
@@ -3569,15 +3584,16 @@ if ( jb_factor > 0.0 ) then
          deallocate (be8_eval_glo)
          deallocate (be9_eval_glo)
          deallocate (be10_eval_glo)
+         if ( use_cv_nr ) deallocate (be11_eval_glo)
       end if
+
+      if ( use_cv_w )  deallocate (be12_eval_glo)
+
 #if (WRF_CHEM == 1)
       if ( chem_cv_options >= 10 ) then
-         deallocate (be12_eval_glo)
+         deallocate (be13_eval_glo)
       end if
 #endif
-      if ( use_cv_w ) then
-        deallocate (be11_eval_glo)
-      end if
 
       deallocate (be1_evec_loc)
       deallocate (be2_evec_loc)
@@ -3591,15 +3607,16 @@ if ( jb_factor > 0.0 ) then
          deallocate (be8_evec_loc)
          deallocate (be9_evec_loc)
          deallocate (be10_evec_loc)
+         if ( use_cv_nr ) deallocate (be11_evec_loc)
       end if
+
+      if ( use_cv_w )  deallocate (be12_evec_loc)
+
 #if (WRF_CHEM == 1)
       if ( chem_cv_options >= 10 ) then
-         deallocate (be12_evec_loc)
+         deallocate (be13_evec_loc)
       end if
 #endif
-      if ( use_cv_w ) then
-         deallocate (be11_evec_loc)
-      end if
 
       deallocate (be1_evec_glo)
       deallocate (be2_evec_glo)
@@ -3613,15 +3630,16 @@ if ( jb_factor > 0.0 ) then
          deallocate (be8_evec_glo)
          deallocate (be9_evec_glo)
          deallocate (be10_evec_glo)
+	 if ( use_cv_nr ) deallocate (be11_evec_glo)
       end if
+
+      if ( use_cv_w ) deallocate (be12_evec_glo)
+
 #if (WRF_CHEM == 1)
       if ( chem_cv_options >= 10 ) then
-         deallocate (be12_evec_glo)
+         deallocate (be13_evec_glo)
       end if
 #endif
-      if ( use_cv_w ) then
-         deallocate (be11_evec_glo)
-      end if
 
    end if
 
@@ -3643,6 +3661,7 @@ else ! jb_factor <= 0.0
    be %  v9 % mz = 0
    be % v10 % mz = 0
    be % v11 % mz = 0
+   be % v12 % mz = 0
 end if ! jb_factor > 0.0
 
    if (be % ne > 0) then
@@ -3732,7 +3751,13 @@ end if ! jb_factor > 0.0
       be%cv_mz(8)  = be%v8%mz
       be%cv_mz(9)  = be%v9%mz
       be%cv_mz(10) = be%v10%mz
+      if (use_cv_nr) then
+         be%cv_mz(11) = be%v11%mz
+      end if
    end if
+
+   if (use_cv_w) be%cv_mz(be%ncv_mz-2) = be%v12%mz
+
 #if (WRF_CHEM == 1)
    if ( chem_cv_options >= 10 ) then
      be % ncv_mz_chemic  = num_cv_3d_chem
@@ -3740,18 +3765,10 @@ end if ! jb_factor > 0.0
      be%cv_mz_chemic(:) = 0 ! initialize
 
      do i=1,num_cv_3d_chem
-        be%cv_mz_chemic(i)  = be%v12(i)%mz
+        be%cv_mz_chemic(i)  = be%v13(i)%mz
      end do
    end if
 #endif
-   if ( use_cv_w ) then
-      if (be%ncv_mz ==8 .or. be%ncv_mz ==13 ) then
-        be%cv_mz(be%ncv_mz-2) = be%v11%mz
-      else
-        be%cv_mz(num_cv_3d_basic+num_cv_3d_extra+num_cv_2d) = be%v11%mz
-      end if
-      !be%cv_mz(num_cv_3d_basic+num_cv_3d_extra+num_cv_2d) = be%v11%mz   ! This is a bug. (Soyoung on Aug-2021)
-   end if
    be%cv_mz(be%ncv_mz-1) = be%alpha%mz
    be%cv_mz(be%ncv_mz)   = be%ne
 

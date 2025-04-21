@@ -23,11 +23,10 @@ subroutine da_transform_vchemtox_adj(grid, vchem, be)
 
    do ij = 1 , grid%num_tiles
       do ic = PARAM_FIRST_SCALAR, num_chem
-!!!         vchem%chem_ic(:,grid%j_start(ij):grid%j_end(ij),:,ic) = 0.D0
         do m = kts,kte !LEVELS
-         do n = 1, be % v12(ic-1) % mz  !EIGENMODES
-               do j = grid%j_start(ij), grid%j_end(ij) !               do j = jts, jte
-                  temp = be % v12(ic-1) % evec (j,m,n) * be % v12(ic-1) % val (j,n)
+         do n = 1, be % v13(ic-1) % mz  !EIGENMODES
+               do j = grid%j_start(ij), grid%j_end(ij)
+                  temp = be % v13(ic-1) % evec (j,m,n) * be % v13(ic-1) % val (j,n)
                   do i = its, ite
                       vchem%chem_ic (i,j,n,ic) = vchem%chem_ic (i,j,n,ic) + &
                                                        temp * grid%xachem%chem_ic (i,j,m,ic) 

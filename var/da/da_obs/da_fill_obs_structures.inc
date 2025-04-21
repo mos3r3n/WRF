@@ -101,9 +101,6 @@ subroutine da_fill_obs_structures(iv, ob, uvq_direct)
    iv % buoy_ef_p = 1.0
    iv % buoy_ef_q = 1.0
 
-   iv % radar_ef_rv = 1.0
-   iv % radar_ef_rf = 1.0
-
    iv % lightning_ef_w   = 1.0
    iv % lightning_ef_div = 1.0
    iv % lightning_ef_qv  = 1.0
@@ -487,18 +484,6 @@ subroutine da_fill_obs_structures(iv, ob, uvq_direct)
          end if
       end do
    end if
-
-   ! [2.18] Transfer radar obs: this section has been moved to da_fill_obs_structures_radar.inc
-
-!   if (iv%info(radar)%nlocal > 0) then
-!      do n = 1, iv%info(radar)%nlocal
-!         do k = 1, iv%info(radar)%levels(n)
-!            ! Copy observation variables:
-!            ob % radar(n) % rv(k) = iv % radar(n) % rv(k) % inv
-!           ob % radar(n) % rf(k) = iv % radar(n) % rf(k) % inv
-!         end do
-!      end do
-!   end if
 
    ! [2.19] Transfer TC bogus:
 

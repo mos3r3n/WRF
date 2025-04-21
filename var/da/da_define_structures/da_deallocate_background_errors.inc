@@ -24,13 +24,13 @@ subroutine da_deallocate_background_errors (be)
      if (chem_cv_options >=10 ) then
        !! Chem SFC
        do ic = PARAM_FIRST_SCALAR, num_chem
-          if ( be % v12(ic-1) % mz > 0 ) then
-             deallocate( be % v12(ic-1) % val )
-             deallocate( be % v12(ic-1) % evec )
-             deallocate( be % v12(ic-1) % rf_alpha )
+          if ( be % v13(ic-1) % mz > 0 ) then
+             deallocate( be % v13(ic-1) % val )
+             deallocate( be % v13(ic-1) % evec )
+             deallocate( be % v13(ic-1) % rf_alpha )
           end if
       end do                                                                                                                               
-      deallocate ( be % v12 )
+      deallocate ( be % v13 )
       deallocate ( be % cv_mz_chemic )
       if ( num_chem >= PARAM_FIRST_SCALAR ) deallocate ( be % cv % sizechemic )
      end if
@@ -49,9 +49,10 @@ subroutine da_deallocate_background_errors (be)
          if (be % v8 % mz > 0) deallocate (be % v8 % val)
          if (be % v9 % mz > 0) deallocate (be % v9 % val)
          if (be % v10% mz > 0) deallocate (be % v10% val)
+	 if (use_cv_nr .and. be % v11% mz > 0) deallocate (be % v11% val) 
       end if
       if ( use_cv_w ) then
-         if (be % v11% mz > 0) deallocate (be % v11% val)
+         if (be % v12% mz > 0) deallocate (be % v12% val)
       end if
 
       if (be % v1 % mz > 0) deallocate (be % v1 % rf_alpha)
@@ -66,9 +67,10 @@ subroutine da_deallocate_background_errors (be)
          if (be % v8 % mz > 0) deallocate (be % v8 % rf_alpha)
          if (be % v9 % mz > 0) deallocate (be % v9 % rf_alpha)
          if (be % v10% mz > 0) deallocate (be % v10% rf_alpha)
+	 if (use_cv_nr .and. be % v11% mz > 0) deallocate (be % v11% rf_alpha)
       end if
       if ( use_cv_w ) then
-         if (be % v11% mz > 0) deallocate (be % v11% rf_alpha)
+         if (be % v12% mz > 0) deallocate (be % v12% rf_alpha)
       end if
 
       if (global) then
@@ -94,9 +96,10 @@ subroutine da_deallocate_background_errors (be)
             if (be % v8 % mz > 0) deallocate (be % v8 % evec)
             if (be % v9 % mz > 0) deallocate (be % v9 % evec)
             if (be % v10% mz > 0) deallocate (be % v10% evec)
+	    if (use_cv_nr .and. be % v11% mz > 0) deallocate (be % v11% evec)
          end if
          if ( use_cv_w ) then
-            if (be % v11% mz > 0) deallocate (be % v11% evec)
+            if (be % v12% mz > 0) deallocate (be % v12% evec)
          end if
 
          if (be % v1 % mz > 0) deallocate (be % v1 % evec_g)
@@ -111,9 +114,10 @@ subroutine da_deallocate_background_errors (be)
             if (be % v8 % mz > 0) deallocate (be % v8 % evec_g)
             if (be % v9 % mz > 0) deallocate (be % v9 % evec_g)
             if (be % v10% mz > 0) deallocate (be % v10% evec_g)
+	    if (use_cv_nr .and. be % v11% mz > 0) deallocate (be % v11% evec_g)
          end if
          if ( use_cv_w ) then
-            if (be % v11% mz > 0) deallocate (be % v11% evec_g)
+            if (be % v12% mz > 0) deallocate (be % v12% evec_g)
          end if
 
          if (be % v1 % mz > 0) deallocate (be % v1 % val_g)
@@ -128,9 +132,10 @@ subroutine da_deallocate_background_errors (be)
             if (be % v8 % mz > 0) deallocate (be % v8 % val_g)
             if (be % v9 % mz > 0) deallocate (be % v9 % val_g)
             if (be % v10% mz > 0) deallocate (be % v10% val_g)
+	    if (use_cv_nr .and. be % v11% mz > 0) deallocate (be % v11% val_g)
          end if
          if ( use_cv_w ) then
-            if (be % v11% mz > 0) deallocate (be % v11% val_g)
+            if (be % v12% mz > 0) deallocate (be % v12% val_g)
          end if
 
          deallocate (be % cv_mz)

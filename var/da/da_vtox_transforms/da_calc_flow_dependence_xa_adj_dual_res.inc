@@ -19,8 +19,8 @@ subroutine da_calc_flow_dependence_xa_adj_dual_res (ne, ep, grid, xa, vp, nobwin
    integer                              :: iobwin, ii
    real, allocatable, dimension(:,:,:)  :: output_u,output_v,output_t,output_q, output_p
    real, allocatable, dimension(:,:,:)  :: input_u,input_v,input_t,input_q,input_p
-   real, allocatable, dimension(:,:,:)  :: output_qcw,output_qrn,output_qci,output_qsn, output_qgr
-   real, allocatable, dimension(:,:,:)  :: input_qcw,input_qrn,input_qci,input_qsn,input_qgr
+   real, allocatable, dimension(:,:,:)  :: output_qcw,output_qrn,output_qci,output_qsn, output_qgr, output_qnr
+   real, allocatable, dimension(:,:,:)  :: input_qcw,input_qrn,input_qci,input_qsn,input_qgr,input_qnr
 
    integer  :: cims, cime, ckms, ckme, cjms, cjme, &
                nims, nime, nkms, nkme, njms, njme
@@ -64,6 +64,7 @@ subroutine da_calc_flow_dependence_xa_adj_dual_res (ne, ep, grid, xa, vp, nobwin
       allocate( input_qci(nims:nime,njms:njme,nkms:nkme) )
       allocate( input_qsn(nims:nime,njms:njme,nkms:nkme) )
       allocate( input_qgr(nims:nime,njms:njme,nkms:nkme) )
+      allocate( input_qnr(nims:nime,njms:njme,nkms:nkme) )
    end if
 
    ! Output is low-res domain
@@ -78,6 +79,7 @@ subroutine da_calc_flow_dependence_xa_adj_dual_res (ne, ep, grid, xa, vp, nobwin
       allocate( output_qci(cims:cime,cjms:cjme,ckms:ckme) )
       allocate( output_qsn(cims:cime,cjms:cjme,ckms:ckme) )
       allocate( output_qgr(cims:cime,cjms:cjme,ckms:ckme) )
+      allocate( output_qnr(cims:cime,cjms:cjme,ckms:ckme) )
    end if
 
    output_u = 0. ; input_u = 0.
@@ -91,6 +93,7 @@ subroutine da_calc_flow_dependence_xa_adj_dual_res (ne, ep, grid, xa, vp, nobwin
       output_qci = 0. ; input_qci = 0.
       output_qsn = 0. ; input_qsn = 0.
       output_qgr = 0. ; input_qgr = 0.
+      output_qnr = 0. ; input_qnr = 0.
    end if
 
    !
@@ -119,6 +122,7 @@ subroutine da_calc_flow_dependence_xa_adj_dual_res (ne, ep, grid, xa, vp, nobwin
                input_qci(i,j,k) = xa%qci(i,j,k)
                input_qsn(i,j,k) = xa%qsn(i,j,k)
                input_qgr(i,j,k) = xa%qgr(i,j,k)
+	       input_qnr(i,j,k) = xa%qnr(i,j,k)
             end do
          end do
       end do
@@ -197,6 +201,12 @@ subroutine da_calc_flow_dependence_xa_adj_dual_res (ne, ep, grid, xa, vp, nobwin
               cids, cide, cjds, cjde, ckds, ckde,     &
               cims, cime, cjms, cjme, ckms, ckme,     &
               its_int, ite_int, jts_int, jte_int, kts_int, kte_int)
+      call da_dual_res_c2n_ad( input_qnr, output_qnr, &
+              nims, nime, njms, njme, nkms, nkme,     &
+               its,  ite,  jts,  jte,  kts,  kte,     &
+              cids, cide, cjds, cjde, ckds, ckde,     &
+              cims, cime, cjms, cjme, ckms, ckme,     &
+              its_int, ite_int, jts_int, jte_int, kts_int, kte_int)
    end if ! alpha_hydrometeors
 
    write (unit=message(1), fmt='(A,2F12.5)') ' min/max U  Input = ',minval(input_u),maxval(input_u)
@@ -236,6 +246,7 @@ subroutine da_calc_flow_dependence_xa_adj_dual_res (ne, ep, grid, xa, vp, nobwin
             do j = jte_int, jts_int, -1
                do i = ite_int, its_int, -1
                   alpha = 0.0
+		  alpha = alpha + ep % nr(i,j,k,ii) * output_qnr(i,j,k)
                   alpha = alpha + ep % gr(i,j,k,ii) * output_qgr(i,j,k)
                   alpha = alpha + ep % sn(i,j,k,ii) * output_qsn(i,j,k)
                   alpha = alpha + ep % ci(i,j,k,ii) * output_qci(i,j,k)
@@ -274,8 +285,8 @@ subroutine da_calc_flow_dependence_xa_adj_dual_res (ne, ep, grid, xa, vp, nobwin
    deallocate(output_u,output_v,output_t,output_q,output_p)
    deallocate(input_u,input_v,input_t,input_q,input_p)
    if ( alpha_hydrometeors ) then
-      deallocate(output_qcw,output_qrn,output_qci,output_qsn,output_qgr)
-      deallocate(input_qcw,input_qrn,input_qci,input_qsn,input_qgr)
+      deallocate(output_qcw,output_qrn,output_qci,output_qsn,output_qgr,output_qnr)
+      deallocate(input_qcw,input_qrn,input_qci,input_qsn,input_qgr,input_qnr)
    end if
 
    if (trace_use) call da_trace_exit("da_calc_flow_dependence_xa_adj_dual_res")

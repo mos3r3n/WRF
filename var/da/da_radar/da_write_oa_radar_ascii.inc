@@ -22,8 +22,9 @@ subroutine da_write_oa_radar_ascii ( ob, iv, re, it )
    real    :: rn_obs, rn_inv, rn_error, rn_inc
    real    :: sn_obs, sn_inv, sn_error, sn_inc
    real    :: gr_obs, gr_inv, gr_error, gr_inc
+   real    :: nr_obs, nr_inv, nr_error, nr_inc
    real    :: qv_obs, qv_inv, qv_error, qv_inc
-   integer :: rv_qc, rf_qc
+   integer :: rv_qc, rf_qc, nr_qc
    integer :: rn_qc, sn_qc, gr_qc, qv_qc
    character(len=5) :: stn_id
 
@@ -70,44 +71,93 @@ subroutine da_write_oa_radar_ascii ( ob, iv, re, it )
                         re%radar(n)%rf(k),iv%info(radar)%zk(k,n)   ! O, O-B, qc, err, O-A rf
                   else ! use_radar_rhv
                      if ( use_radar_rqv ) then
-                        write(oma_radar_unit,'(2i8,a5,2f9.2,f17.7,5(2f17.7,i8,2f17.7))')&
-                           num_obs , k, 'RADAR', &
-                           iv % info (radar) % lat(1,n), &  ! Latitude
-                           iv % info (radar) % lon(1,n), &  ! Longitude
-                           iv % radar(n) % height(k),    &  ! Obs height in m
-                           ob%radar(n)%rv(k),   &  ! radial velocity
-                           iv%radar(n)%rv(k)%inv,iv%radar(n)%rv(k)%qc,iv%radar(n)%rv(k)%error,&
-                           re%radar(n)%rv(k),   &  ! O, O-B, qc, err, O-A rv
-                           iv%radar(n)%rrno(k), &  ! retrieved rain water
-                           iv%radar(n)%rrn(k)%inv,iv%radar(n)%rrn(k)%qc,iv%radar(n)%rrn(k)%error,&
-                           re%radar(n)%rrn(k),  &  ! O, O-B, qc, err, O-A rrn
-                           iv%radar(n)%rsno(k), &  ! retrieved snow
-                           iv%radar(n)%rsn(k)%inv,iv%radar(n)%rsn(k)%qc,iv%radar(n)%rsn(k)%error,&
-                           re%radar(n)%rsn(k),  &  ! O, O-B, qc, err, O-A rsn
-                           iv%radar(n)%rgro(k), &  ! retrieved graupel
-                           iv%radar(n)%rgr(k)%inv,iv%radar(n)%rgr(k)%qc,iv%radar(n)%rgr(k)%error,&
-                           re%radar(n)%rgr(k),  &  ! O, O-B, qc, err, O-A rgr
-                           iv%radar(n)%rqvo(k), &  ! retrieved water vapor
-                           iv%radar(n)%rqv(k)%inv,iv%radar(n)%rqv(k)%qc,iv%radar(n)%rqv(k)%error,&
-                           re%radar(n)%rqv(k)      ! O, O-B, qc, err, O-A rqv
+		        if ( use_radar_rnr ) then
+                           write(oma_radar_unit,'(2i8,a5,2f9.2,f17.7,6(2f17.7,i8,2f17.7))')&
+                              num_obs , k, 'RADAR', &
+                              iv % info (radar) % lat(1,n), &  ! Latitude
+                              iv % info (radar) % lon(1,n), &  ! Longitude
+                              iv % radar(n) % height(k),    &  ! Obs height in m
+                              ob%radar(n)%rv(k),   &  ! radial velocity
+                              iv%radar(n)%rv(k)%inv,iv%radar(n)%rv(k)%qc,iv%radar(n)%rv(k)%error,&
+                              re%radar(n)%rv(k),   &  ! O, O-B, qc, err, O-A rv
+                              iv%radar(n)%rrno(k), &  ! retrieved rain water
+                              iv%radar(n)%rrn(k)%inv,iv%radar(n)%rrn(k)%qc,iv%radar(n)%rrn(k)%error,&
+                              re%radar(n)%rrn(k),  &  ! O, O-B, qc, err, O-A rrn
+                              iv%radar(n)%rsno(k), &  ! retrieved snow
+                              iv%radar(n)%rsn(k)%inv,iv%radar(n)%rsn(k)%qc,iv%radar(n)%rsn(k)%error,&
+                              re%radar(n)%rsn(k),  &  ! O, O-B, qc, err, O-A rsn
+                              iv%radar(n)%rgro(k), &  ! retrieved graupel
+                              iv%radar(n)%rgr(k)%inv,iv%radar(n)%rgr(k)%qc,iv%radar(n)%rgr(k)%error,&
+                              re%radar(n)%rgr(k),  &  ! O, O-B, qc, err, O-A rgr
+			      iv%radar(n)%rnro(k), &  ! retrieved gnrain
+                              iv%radar(n)%rnr(k)%inv,iv%radar(n)%rnr(k)%qc,iv%radar(n)%rnr(k)%error,&
+                              re%radar(n)%rnr(k),  &  ! O, O-B, qc, err, O-A rnr
+                              iv%radar(n)%rqvo(k), &  ! retrieved water vapor
+                              iv%radar(n)%rqv(k)%inv,iv%radar(n)%rqv(k)%qc,iv%radar(n)%rqv(k)%error,&
+                              re%radar(n)%rqv(k)      ! O, O-B, qc, err, O-A rqv
+			else
+			   write(oma_radar_unit,'(2i8,a5,2f9.2,f17.7,5(2f17.7,i8,2f17.7))')&
+                              num_obs , k, 'RADAR', &
+                              iv % info (radar) % lat(1,n), &  ! Latitude
+                              iv % info (radar) % lon(1,n), &  ! Longitude
+                              iv % radar(n) % height(k),    &  ! Obs height in m
+                              ob%radar(n)%rv(k),   &  ! radial velocity
+                              iv%radar(n)%rv(k)%inv,iv%radar(n)%rv(k)%qc,iv%radar(n)%rv(k)%error,&
+                              re%radar(n)%rv(k),   &  ! O, O-B, qc, err, O-A rv
+                              iv%radar(n)%rrno(k), &  ! retrieved rain water
+                              iv%radar(n)%rrn(k)%inv,iv%radar(n)%rrn(k)%qc,iv%radar(n)%rrn(k)%error,&
+                              re%radar(n)%rrn(k),  &  ! O, O-B, qc, err, O-A rrn
+                              iv%radar(n)%rsno(k), &  ! retrieved snow
+                              iv%radar(n)%rsn(k)%inv,iv%radar(n)%rsn(k)%qc,iv%radar(n)%rsn(k)%error,&
+                              re%radar(n)%rsn(k),  &  ! O, O-B, qc, err, O-A rsn
+                              iv%radar(n)%rgro(k), &  ! retrieved graupel
+                              iv%radar(n)%rgr(k)%inv,iv%radar(n)%rgr(k)%qc,iv%radar(n)%rgr(k)%error,&
+                              re%radar(n)%rgr(k),  &  ! O, O-B, qc, err, O-A rgr
+                              iv%radar(n)%rqvo(k), &  ! retrieved water vapor
+                              iv%radar(n)%rqv(k)%inv,iv%radar(n)%rqv(k)%qc,iv%radar(n)%rqv(k)%error,&
+                              re%radar(n)%rqv(k)      ! O, O-B, qc, err, O-A rq
+			end if
                      else ! not use_radar_rqv
-                        write(oma_radar_unit,'(2i8,a5,2f9.2,f17.7,4(2f17.7,i8,2f17.7))')&
-                           num_obs , k, 'RADAR', &
-                           iv % info (radar) % lat(1,n), &  ! Latitude
-                           iv % info (radar) % lon(1,n), &  ! Longitude
-                           iv % radar(n) % height(k),    &  ! Obs height in m
-                           ob%radar(n)%rv(k),   &  ! radial velocity
-                           iv%radar(n)%rv(k)%inv,iv%radar(n)%rv(k)%qc,iv%radar(n)%rv(k)%error,&
-                           re%radar(n)%rv(k),   &  ! O, O-B, qc, err, O-A rv
-                           iv%radar(n)%rrno(k), &  ! retrieved rain water
-                           iv%radar(n)%rrn(k)%inv,iv%radar(n)%rrn(k)%qc,iv%radar(n)%rrn(k)%error,&
-                           re%radar(n)%rrn(k),  &  ! O, O-B, qc, err, O-A rrn
-                           iv%radar(n)%rsno(k), &  ! retrieved snow
-                           iv%radar(n)%rsn(k)%inv,iv%radar(n)%rsn(k)%qc,iv%radar(n)%rsn(k)%error,&
-                           re%radar(n)%rsn(k),  &  ! O, O-B, qc, err, O-A rsn
-                           iv%radar(n)%rgro(k), &  ! retrieved graupel
-                           iv%radar(n)%rgr(k)%inv,iv%radar(n)%rgr(k)%qc,iv%radar(n)%rgr(k)%error,&
-                           re%radar(n)%rgr(k)      ! O, O-B, qc, err, O-A rgr
+		        if ( use_radar_rnr ) then
+		           write(oma_radar_unit,'(2i8,a5,2f9.2,f17.7,5(2f17.7,i8,2f17.7))')&
+                              num_obs , k, 'RADAR', &
+                              iv % info (radar) % lat(1,n), &  ! Latitude
+                              iv % info (radar) % lon(1,n), &  ! Longitude
+                              iv % radar(n) % height(k),    &  ! Obs height in m
+                              ob%radar(n)%rv(k),   &  ! radial velocity
+                              iv%radar(n)%rv(k)%inv,iv%radar(n)%rv(k)%qc,iv%radar(n)%rv(k)%error,&
+                              re%radar(n)%rv(k),   &  ! O, O-B, qc, err, O-A rv
+                              iv%radar(n)%rrno(k), &  ! retrieved rain water
+                              iv%radar(n)%rrn(k)%inv,iv%radar(n)%rrn(k)%qc,iv%radar(n)%rrn(k)%error,&
+                              re%radar(n)%rrn(k),  &  ! O, O-B, qc, err, O-A rrn
+                              iv%radar(n)%rsno(k), &  ! retrieved snow
+                              iv%radar(n)%rsn(k)%inv,iv%radar(n)%rsn(k)%qc,iv%radar(n)%rsn(k)%error,&
+                              re%radar(n)%rsn(k),  &  ! O, O-B, qc, err, O-A rsn
+                              iv%radar(n)%rgro(k), &  ! retrieved graupel
+                              iv%radar(n)%rgr(k)%inv,iv%radar(n)%rgr(k)%qc,iv%radar(n)%rgr(k)%error,&
+                              re%radar(n)%rgr(k),  &  ! O, O-B, qc, err, O-A rgr
+                              iv%radar(n)%rnro(k), &  ! retrieved gnrain
+                              iv%radar(n)%rnr(k)%inv,iv%radar(n)%rnr(k)%qc,iv%radar(n)%rnr(k)%error,&
+                              re%radar(n)%rnr(k)      ! O, O-B, qc, err, O-A rnr
+                        else
+                           write(oma_radar_unit,'(2i8,a5,2f9.2,f17.7,4(2f17.7,i8,2f17.7))')&
+                              num_obs , k, 'RADAR', &
+                              iv % info (radar) % lat(1,n), &  ! Latitude
+                              iv % info (radar) % lon(1,n), &  ! Longitude
+                              iv % radar(n) % height(k),    &  ! Obs height in m
+                              ob%radar(n)%rv(k),   &  ! radial velocity
+                              iv%radar(n)%rv(k)%inv,iv%radar(n)%rv(k)%qc,iv%radar(n)%rv(k)%error,&
+                              re%radar(n)%rv(k),   &  ! O, O-B, qc, err, O-A rv
+                              iv%radar(n)%rrno(k), &  ! retrieved rain water
+                              iv%radar(n)%rrn(k)%inv,iv%radar(n)%rrn(k)%qc,iv%radar(n)%rrn(k)%error,&
+                              re%radar(n)%rrn(k),  &  ! O, O-B, qc, err, O-A rrn
+                              iv%radar(n)%rsno(k), &  ! retrieved snow
+                              iv%radar(n)%rsn(k)%inv,iv%radar(n)%rsn(k)%qc,iv%radar(n)%rsn(k)%error,&
+                              re%radar(n)%rsn(k),  &  ! O, O-B, qc, err, O-A rsn
+                              iv%radar(n)%rgro(k), &  ! retrieved graupel
+                              iv%radar(n)%rgr(k)%inv,iv%radar(n)%rgr(k)%qc,iv%radar(n)%rgr(k)%error,&
+                              re%radar(n)%rgr(k)      ! O, O-B, qc, err, O-A rgr
+			end if ! check use_rnr
                      end if ! check use_radar_rqv
                   end if ! check use_radar_rhv
                end do ! leve loop
@@ -177,37 +227,77 @@ subroutine da_write_oa_radar_ascii ( ob, iv, re, it )
                          rf_obs, rf_inv, rf_qc, rf_error, rf_inc, zk
                   else ! use_radar_rhv
                      if ( use_radar_rqv ) then
-                        read(omb_radar_unit,'(2i8,a5,2f9.2,f17.7,5(2f17.7,i8,2f17.7))')&
-                            kk,l, stn_id,     &  ! Station
-                            lat, lon, height, &  ! Lat/lon, height
-                            rv_obs, rv_inv, rv_qc, rv_error, rv_inc, &
-                            rn_obs, rn_inv, rn_qc, rn_error, rn_inc, &
-                            sn_obs, sn_inv, sn_qc, sn_error, sn_inc, &
-                            gr_obs, gr_inv, gr_qc, gr_error, gr_inc, &
-                            qv_obs, qv_inv, qv_qc, qv_error, qv_inc
-                        write(omb_radar_iter_unit,'(2i8,a5,2f9.2,f17.7,5(2f17.7,i8,2f17.7))')&
-                            num,m,stn_id,     &  ! Station
-                            lat, lon, height, &  ! Lat/lon, height
-                            rv_obs, rv_inv, rv_qc, rv_error, rv_inc, &
-                            rn_obs, rn_inv, rn_qc, rn_error, rn_inc, &
-                            sn_obs, sn_inv, sn_qc, sn_error, sn_inc, &
-                            gr_obs, gr_inv, gr_qc, gr_error, gr_inc, &
-                            qv_obs, qv_inv, qv_qc, qv_error, qv_inc
+		        if ( use_radar_rnr ) then
+                           read(omb_radar_unit,'(2i8,a5,2f9.2,f17.7,6(2f17.7,i8,2f17.7))')&
+                              kk,l, stn_id,     &  ! Station
+                              lat, lon, height, &  ! Lat/lon, height
+                              rv_obs, rv_inv, rv_qc, rv_error, rv_inc, &
+                              rn_obs, rn_inv, rn_qc, rn_error, rn_inc, &
+                              sn_obs, sn_inv, sn_qc, sn_error, sn_inc, &
+                              gr_obs, gr_inv, gr_qc, gr_error, gr_inc, &
+			      nr_obs, gr_inv, nr_qc, nr_error, nr_inc, &
+                              qv_obs, qv_inv, qv_qc, qv_error, qv_inc
+                           write(omb_radar_iter_unit,'(2i8,a5,2f9.2,f17.7,6(2f17.7,i8,2f17.7))')&
+                              num,m,stn_id,     &  ! Station
+                              lat, lon, height, &  ! Lat/lon, height
+                              rv_obs, rv_inv, rv_qc, rv_error, rv_inc, &
+                              rn_obs, rn_inv, rn_qc, rn_error, rn_inc, &
+                              sn_obs, sn_inv, sn_qc, sn_error, sn_inc, &
+                              gr_obs, gr_inv, gr_qc, gr_error, gr_inc, &
+			      nr_obs, gr_inv, nr_qc, nr_error, nr_inc, &
+                              qv_obs, qv_inv, qv_qc, qv_error, qv_inc
+			else
+                           read(omb_radar_unit,'(2i8,a5,2f9.2,f17.7,5(2f17.7,i8,2f17.7))')&
+                              kk,l, stn_id,     &  ! Station
+                              lat, lon, height, &  ! Lat/lon, height
+                              rv_obs, rv_inv, rv_qc, rv_error, rv_inc, &
+                              rn_obs, rn_inv, rn_qc, rn_error, rn_inc, &
+                              sn_obs, sn_inv, sn_qc, sn_error, sn_inc, &
+                              gr_obs, gr_inv, gr_qc, gr_error, gr_inc, &
+                              qv_obs, qv_inv, qv_qc, qv_error, qv_inc
+                           write(omb_radar_iter_unit,'(2i8,a5,2f9.2,f17.7,5(2f17.7,i8,2f17.7))')&
+                              num,m,stn_id,     &  ! Station
+                              lat, lon, height, &  ! Lat/lon, height
+                              rv_obs, rv_inv, rv_qc, rv_error, rv_inc, &
+                              rn_obs, rn_inv, rn_qc, rn_error, rn_inc, &
+                              sn_obs, sn_inv, sn_qc, sn_error, sn_inc, &
+                              gr_obs, gr_inv, gr_qc, gr_error, gr_inc, &
+                              qv_obs, qv_inv, qv_qc, qv_error, qv_inc
+				end if
                      else ! not use_radar_rqv
-                        read(omb_radar_unit,'(2i8,a5,2f9.2,f17.7,4(2f17.7,i8,2f17.7))')&
-                            kk,l, stn_id,     &  ! Station
-                            lat, lon, height, &  ! Lat/lon, height
-                            rv_obs, rv_inv, rv_qc, rv_error, rv_inc, &
-                            rn_obs, rn_inv, rn_qc, rn_error, rn_inc, &
-                            sn_obs, sn_inv, sn_qc, sn_error, sn_inc, &
-                            gr_obs, gr_inv, gr_qc, gr_error, gr_inc
-                        write(omb_radar_iter_unit,'(2i8,a5,2f9.2,f17.7,4(2f17.7,i8,2f17.7))')&
-                            num,m,stn_id,     &  ! Station
-                            lat, lon, height, &  ! Lat/lon, height
-                            rv_obs, rv_inv, rv_qc, rv_error, rv_inc, &
-                            rn_obs, rn_inv, rn_qc, rn_error, rn_inc, &
-                            sn_obs, sn_inv, sn_qc, sn_error, sn_inc, &
-                            gr_obs, gr_inv, gr_qc, gr_error, gr_inc
+		        if (use_radar_rnr) then
+			   read(omb_radar_unit,'(2i8,a5,2f9.2,f17.7,5(2f17.7,i8,2f17.7))')&
+                              kk,l, stn_id,     &  ! Station
+                              lat, lon, height, &  ! Lat/lon, height
+                              rv_obs, rv_inv, rv_qc, rv_error, rv_inc, &
+                              rn_obs, rn_inv, rn_qc, rn_error, rn_inc, &
+                              sn_obs, sn_inv, sn_qc, sn_error, sn_inc, &
+			      nr_obs, gr_inv, nr_qc, nr_error, nr_inc, &
+                              gr_obs, gr_inv, gr_qc, gr_error, gr_inc
+                           write(omb_radar_iter_unit,'(2i8,a5,2f9.2,f17.7,5(2f17.7,i8,2f17.7))')&
+                              num,m,stn_id,     &  ! Station
+                              lat, lon, height, &  ! Lat/lon, height
+                              rv_obs, rv_inv, rv_qc, rv_error, rv_inc, &
+                              rn_obs, rn_inv, rn_qc, rn_error, rn_inc, &
+                              sn_obs, sn_inv, sn_qc, sn_error, sn_inc, &
+			      nr_obs, gr_inv, nr_qc, nr_error, nr_inc, &
+                              gr_obs, gr_inv, gr_qc, gr_error, gr_inc
+		        else
+                           read(omb_radar_unit,'(2i8,a5,2f9.2,f17.7,4(2f17.7,i8,2f17.7))')&
+                              kk,l, stn_id,     &  ! Station
+                              lat, lon, height, &  ! Lat/lon, height
+                              rv_obs, rv_inv, rv_qc, rv_error, rv_inc, &
+                              rn_obs, rn_inv, rn_qc, rn_error, rn_inc, &
+                              sn_obs, sn_inv, sn_qc, sn_error, sn_inc, &
+                              gr_obs, gr_inv, gr_qc, gr_error, gr_inc
+                           write(omb_radar_iter_unit,'(2i8,a5,2f9.2,f17.7,4(2f17.7,i8,2f17.7))')&
+                              num,m,stn_id,     &  ! Station
+                              lat, lon, height, &  ! Lat/lon, height
+                              rv_obs, rv_inv, rv_qc, rv_error, rv_inc, &
+                              rn_obs, rn_inv, rn_qc, rn_error, rn_inc, &
+                              sn_obs, sn_inv, sn_qc, sn_error, sn_inc, &
+                              gr_obs, gr_inv, gr_qc, gr_error, gr_inc
+			end if
                      end if ! check use_radar_rqv
                   end if ! check use_radar_rhv
                end do ! level loop

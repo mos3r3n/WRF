@@ -105,9 +105,10 @@ subroutine da_minimise_cg(grid, config_flags,            &
          sz(8)  = be%cv%size8
          sz(9)  = be%cv%size9
          sz(10) = be%cv%size10
+	 if ( use_cv_nr ) sz(10) = be%cv%size11
       end if
-      if ( be%ncv_mz == 8 .or. be%ncv_mz == 13 ) then ! has cv_w
-         sz(be%ncv_mz-2) = be%cv%size11i
+      if ( be%ncv_mz == 8 .or. be%ncv_mz == 13 .or. be%ncv_mz == 14) then ! has cv_w
+         sz(be%ncv_mz-2) = be%cv%size12
       end if
       if ( be%ne > 0 ) then
          sz(nv_precon) = be%cv%size_alphac

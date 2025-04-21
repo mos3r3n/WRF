@@ -8,7 +8,6 @@ subroutine da_setup_background_errors(grid, be)
    implicit none
 
    type (domain), intent(in)   :: grid
-!  type (xb_type), intent(in)  :: xb       ! First guess structure.
    type (be_type), intent(out) :: be       ! Back. errors structure.
 
    integer :: num_cv_3d_basic, num_cv_3d_extra, num_cv_2d
@@ -35,8 +34,9 @@ subroutine da_setup_background_errors(grid, be)
             max_vert_var9 = 0
             max_vert_var10 = 0
             max_vert_var11 = 0
+	    max_vert_var12 = 0
 #if (WRF_CHEM == 1)
-            max_vert_var12 = 0
+            max_vert_var13 = 0
 #endif
       end if
       sigma_alpha = alpha_std_dev
@@ -52,6 +52,7 @@ subroutine da_setup_background_errors(grid, be)
    if ( cv_options /= 3 ) then
       if ( cloud_cv_options >= 2 ) then
          num_cv_3d_extra = 5
+	 if ( use_cv_nr ) num_cv_3d_extra = num_cv_3d_extra + 1
       end if
       if ( use_cv_w ) then
          num_cv_3d_extra = num_cv_3d_extra + 1
@@ -75,6 +76,7 @@ subroutine da_setup_background_errors(grid, be)
    be % v9 % mz = 0
    be % v10% mz = 0
    be % v11% mz = 0
+   be % v12% mz = 0
 
 #if (WRF_CHEM == 1)
 
@@ -97,8 +99,7 @@ subroutine da_setup_background_errors(grid, be)
          call da_error(__FILE__,__LINE__,message(1:1))
       endif
    else if(fg_format == fg_format_wrf_nmm_regional ) then
-!rizvi TBD            call da_setup_be_regional (grid%xb, be)
-            call da_setup_be_nmm_regional (grid%xb, be)
+      call da_setup_be_nmm_regional (grid%xb, be)
    end if
 
    ! initialize
@@ -112,7 +113,8 @@ subroutine da_setup_background_errors(grid, be)
    be % cv % size8   = 0
    be % cv % size9   = 0
    be % cv % size10  = 0
-   be % cv % size11i = 0
+   be % cv % size11  = 0
+   be % cv % size12  = 0
 
    call da_setup_cv (be)
 

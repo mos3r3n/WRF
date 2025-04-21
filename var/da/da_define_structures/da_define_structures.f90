@@ -26,9 +26,9 @@ module da_define_structures
       chemic_surf, chem_cv_options, &
 #endif
       trace_use_dull,comm, num_pseudo
-   use da_control, only : cloud_cv_options, use_cv_w
+   use da_control, only : cloud_cv_options, use_cv_w, use_cv_nr
    use da_control, only : pseudo_uvtpq
-   use da_control, only : use_radar_rhv, use_radar_rqv
+   use da_control, only : use_radar_rhv, use_radar_rqv, use_radar_rnr, use_dualpol_radar
 
 #if (WRF_CHEM == 1)
    use module_state_description, only : PARAM_FIRST_SCALAR, num_chem, num_chemic_surf
@@ -149,6 +149,9 @@ module da_define_structures
       real                   :: zk             ! MM5 k-coordinates
       type (field_type)      :: rv
       type (field_type)      :: rf
+      type (field_type)      :: zdr
+      type (field_type)      :: kdp
+      type (field_type)      :: cc
    end type radar_each_level_type
 
    type info_type
@@ -223,34 +226,34 @@ module da_define_structures
    type radar_type
       type (stn_loc_type)     :: stn_loc
 
-      real, pointer           :: model_p(:)
-      real, pointer           :: model_t(:)
-      real, pointer           :: model_rho(:)
-      real, pointer           :: model_qrn(:)
-      real, pointer           :: model_qcl(:)
-      real, pointer           :: model_qci(:)
-      real, pointer           :: model_qsn(:)
-      real, pointer           :: model_qgr(:)
-      real, pointer           :: model_zmm(:)  ! reflectivity in mm^6 mm^-3
-      real                    :: model_ps
-
+      real                            :: model_ps
       real                  , pointer :: height   (:) ! Height in m
       integer               , pointer :: height_qc(:) ! Height QC
-
+      real                  , pointer :: model_p  (:)
+      real                  , pointer :: model_t  (:)
+      real                  , pointer :: model_rho(:)
+      real                  , pointer :: model_qrn(:)
+      real                  , pointer :: model_qsn(:)
+      real                  , pointer :: model_qgr(:)
+      real                  , pointer :: model_qnr(:)
+      real                  , pointer :: model_zmm(:)
       type (field_type)     , pointer :: rv       (:) ! Radial Velocity
       type (field_type)     , pointer :: rf       (:) ! Reflectivity
       type (field_type)     , pointer :: zmm      (:) ! Reflectivity (mm^6 mm^-3)
-      type (field_type)     , pointer :: rcl      (:) !
-      type (field_type)     , pointer :: rci      (:) !
-      real                  , pointer :: rclo     (:)
-      real                  , pointer :: rcio     (:)
+      ! Dual-pol observations
+      type (field_type)     , pointer :: zdr      (:) ! Differential Reflectivity
+      type (field_type)     , pointer :: kdp      (:) ! Specific Differential Phase 
+      type (field_type)     , pointer :: cc       (:) ! Correlation Coefficient 
+      ! Retrieval state variables.
       type (field_type)     , pointer :: rrn      (:) => null() ! qrain
       type (field_type)     , pointer :: rsn      (:) => null() ! qsnow
       type (field_type)     , pointer :: rgr      (:) => null() ! qgraupel
+      type (field_type)     , pointer :: rnr      (:) => null() ! qnrain
       type (field_type)     , pointer :: rqv      (:) => null()
       real                  , pointer :: rrno     (:) => null()
       real                  , pointer :: rsno     (:) => null()
       real                  , pointer :: rgro     (:) => null()
+      real                  , pointer :: rnro     (:) => null()
       real                  , pointer :: rqvo     (:) => null()
    end type radar_type
 
@@ -738,7 +741,7 @@ module da_define_structures
       real    :: qscat_ef_u, qscat_ef_v
       real    :: profiler_ef_u, profiler_ef_v
       real    :: buoy_ef_u, buoy_ef_v, buoy_ef_t, buoy_ef_p, buoy_ef_q
-      real    :: radar_ef_rv, radar_ef_rf, radar_ef_rr
+      real    :: radar_ef_rv, radar_ef_rf, radar_ef_rr, radar_ef_zdr, radar_ef_kdp, radar_ef_cc
       real    :: bogus_ef_u, bogus_ef_v, bogus_ef_t, bogus_ef_p, bogus_ef_q, bogus_ef_slp
       real    :: airsr_ef_t,  airsr_ef_q
       real    :: rain_ef_r
@@ -815,11 +818,13 @@ module da_define_structures
       type (bad_info_type)       :: rh
       type (bad_info_type)       :: rv
       type (bad_info_type)       :: rf
+      type (bad_info_type)       :: zdr
+      type (bad_info_type)       :: kdp
+      type (bad_info_type)       :: cc
       type (bad_info_type)       :: rrn
       type (bad_info_type)       :: rsn
       type (bad_info_type)       :: rgr
-      type (bad_info_type)       :: rcl
-      type (bad_info_type)       :: rci
+      type (bad_info_type)       :: rnr
       type (bad_info_type)       :: rqv
       type (bad_info_type)       :: slp
       type (bad_info_type)       :: rad
@@ -964,8 +969,10 @@ module da_define_structures
    type residual_radar_type
       real, pointer :: rv(:)                    ! rv
       real, pointer :: rf(:)                    ! rf
-      real, pointer :: rcl(:)                   ! 
-      real, pointer :: rci(:)                   !
+      real, pointer :: zdr(:) 
+      real, pointer :: kdp(:)
+      real, pointer :: cc(:)       
+      real, pointer :: rnr(:) => null()         !
       real, pointer :: rrn(:) => null()         ! rrain
       real, pointer :: rsn(:) => null()         ! rsnow
       real, pointer :: rgr(:) => null()         ! rgraupel
@@ -1086,7 +1093,7 @@ module da_define_structures
       real                :: qscat_u, qscat_v
       real                :: profiler_u, profiler_v
       real                :: buoy_u, buoy_v, buoy_t, buoy_p, buoy_q
-      real                :: radar_rv, radar_rf, radar_rrn,radar_rsn,radar_rgr,radar_rcl,radar_rci,radar_rqv
+      real                :: radar_rv, radar_rf, radar_rrn, radar_rsn, radar_rgr, radar_rnr, radar_rqv, radar_zdr, radar_kdp, radar_cc
       real                :: bogus_u, bogus_v, bogus_t, bogus_q, bogus_slp
       real                :: airsr_t, airsr_q
       real                :: rain_r
@@ -1131,6 +1138,7 @@ module da_define_structures
       integer :: size9c      ! Complex size of CV array of 9th variable error.
       integer :: size10c     ! Complex size of CV array of 10th variable error.
       integer :: size11c     ! Complex size of CV array of 11th variable error.
+      integer :: size12c     ! Complex size of CV array of 11th variable error.
 
       integer :: size_alphac ! Size of alpha control variable (complex).
       integer :: size1       ! Size of CV array of 1st variable error.
@@ -1144,7 +1152,8 @@ module da_define_structures
       integer :: size8       ! Size of CV array of 8th variable error.
       integer :: size9       ! Size of CV array of 9th variable error.
       integer :: size10      ! Size of CV array of 10th variable error.
-      integer :: size11i     ! Size of CV array of 11th variable error.
+      integer :: size11      ! Size of CV array of 11th variable error.
+      integer :: size12      ! Size of CV array of 12th variable error.
 
       integer :: size1l      ! Size of CV array of 1st variable lbc error.
       integer :: size2l      ! Size of CV array of 2nd variable lbc error.
@@ -1195,6 +1204,7 @@ module da_define_structures
       type (be_subtype) :: v9
       type (be_subtype) :: v10
       type (be_subtype) :: v11
+      type (be_subtype) :: v12
 
       type (be_subtype) :: alpha
       real*8, pointer     :: pb_vert_reg(:,:,:)
@@ -1202,7 +1212,7 @@ module da_define_structures
       !integer           :: ncv_mz_chem      ! number of variables for cv_mz
       !integer, pointer  :: cv_mz_chem(:)    ! array to hold mz of each cv
 
-      type (be_subtype),allocatable :: v12(:)     ! Chem initial condition scaling factor CVs
+      type (be_subtype),allocatable :: v13(:)     ! Chem initial condition scaling factor CVs
       integer           :: ncv_mz_chemic      ! number of variables for cv_mz
       integer, pointer  :: cv_mz_chemic(:)    ! array to hold mz of each cv
 

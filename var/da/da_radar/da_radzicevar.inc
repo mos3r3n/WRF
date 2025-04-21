@@ -97,10 +97,6 @@ subroutine da_radzicevar(qvp0,qra0,qsn0,qgr0,qnr0,qns0,qng0,tmk0,prs,dbz,       
 
   real           :: alpha_rdsa=0.194*10.**(-4)
   real           :: alpha_rdsb=0.191*10.**(-4)
-  !---------------------------------------------
-  !real           :: alpha_rdha=0.191*10.**(-3)  ! hail
-  !real           :: alpha_rdhb=0.165*10.**(-3)  ! hail
-  !--------------------------------------------
   real           :: alpha_rdha=0.105*10.**(-3)  ! graupel
   real           :: alpha_rdhb=0.092*10.**(-3)  ! graupel
 
@@ -138,12 +134,6 @@ subroutine da_radzicevar(qvp0,qra0,qsn0,qgr0,qnr0,qns0,qng0,tmk0,prs,dbz,       
 
   data para_alpha_rxa(:,1)/0.194e-4,7.094e-4,2.135e-4,-5.225e-4,0,0,0/
   data para_alpha_rxb(:,1)/0.191e-4,6.916e-4,-2.841e-4,-1.160e-4,0,0,0/
-  !----hail--------------
-  !data para_alpha_rxa(:,2)/0.191e-3,2.39e-3,-12.57e-3,38.71e-3,-65.53e-3,56.16e-3,  &
-  !                        -18.98e-3/
-  !data para_alpha_rxb(:,2)/0.165e-3,1.72e-3,-9.92e-3,32.15e-3,-56.0e-3,48.83e-3,   &
-  !                        -16.69e-3/
-  !----graupel-----------
   data para_alpha_rxa(:,2)/1.05E-04,1.82E-03,-3.77E-03,-7.97E-04,1.63E-02,-2.20E-02, &
                            8.74E-03/
   data para_alpha_rxb(:,2)/9.25E-05,1.93E-03,-9.79E-03,2.92E-02,-4.82E-02,3.93E-02, &
@@ -157,9 +147,6 @@ subroutine da_radzicevar(qvp0,qra0,qsn0,qgr0,qnr0,qns0,qng0,tmk0,prs,dbz,       
   qgr=qgr0
   tmk=tmk0
   qvp=qvp0
-!  if(qra0<qthres) qra=qthres
-!  if(qsn0<qthres) qsn=qthres
-!  if(qgr0<qthres) qgr=qthres
 
   if(tlopt>=1.and.gropt>=1) then
     dqra=0
@@ -183,16 +170,6 @@ subroutine da_radzicevar(qvp0,qra0,qsn0,qgr0,qnr0,qns0,qng0,tmk0,prs,dbz,       
   zdsv=0
   zdgv=0
  
-!  if(qra<qthres.and.qsn<qthres.and.qgr<qthres) then
-!     zrs=0
-!     zss=0
-!     zhs=0
-!     ref=0
-!     zmm=0
-!     dbz=0
-!     return
-!  endif
-
   call da_radzicevar_rhoair_tl(tlopt,rhoair,prs,rgas,tmk,qvp,pdfrhot,pdfrhoq)
 
 !-------------------------------------------------------

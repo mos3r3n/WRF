@@ -27,7 +27,7 @@ module da_setup_structures
       use_ssmiretrievalobs,use_radarobs,use_ssmitbobs,use_qscatobs, num_procs, use_rainobs, &
 #if (WRF_CHEM == 1)
       use_chemic_surfobs, chemic_surf, &
-      chem_cv_options, max_vert_var12, var_scaling12, len_scaling12, &
+      chem_cv_options, max_vert_var13, var_scaling13, len_scaling13, &
 #endif
       num_pseudo, missing, ob_format, ob_format_bufr,ob_format_ascii, ob_format_madis, ob_format_gpsro, &
       use_airepobs, use_tamdarobs, test_dm_exact, use_amsuaobs, use_amsubobs, &
@@ -42,14 +42,14 @@ module da_setup_structures
       lat_stats_option,alpha_std_dev,sigma_alpha,alpha_corr_scale, &
       len_scaling1, len_scaling2, len_scaling3, len_scaling4, len_scaling5,&
       len_scaling6, len_scaling7, len_scaling8, len_scaling9, &
-      len_scaling10, len_scaling11, &
+      len_scaling10, len_scaling11, len_scaling12, &
       max_vert_var1, max_vert_var2, max_vert_var3, max_vert_var4, max_vert_var5, &
       max_vert_var6, max_vert_var7, max_vert_var8, max_vert_var9, max_vert_var10,&
-      max_vert_var11, max_vert_var_alpha, &
+      max_vert_var11, max_vert_var12, max_vert_var_alpha, &
       print_detail_be, test_statistics, do_normalize, use_rf, &
       var_scaling1, var_scaling2, var_scaling3, var_scaling4, &
       var_scaling5, var_scaling6, var_scaling7, var_scaling8, &
-      var_scaling9, var_scaling10, var_scaling11,&
+      var_scaling9, var_scaling10, var_scaling11, var_scaling12, &
       vert_corr,max_vert_var5,power_truncation,alpha_truncation, &
       print_detail_regression,gas_constant, use_airsretobs, &
       filename_len, use_ssmisobs, gravity, t_triple, use_hirs4obs, use_mhsobs, &
@@ -77,7 +77,7 @@ module da_setup_structures
       use_goesimgobs, use_ahiobs, use_goesabiobs, use_gmiobs, obs_use, thin_conv_opt, no_thin, &
       thin_superob_hv, thin_mesh_vert_conv, use_satwnd_bufr
    use da_control, only: rden_bin, use_lsac
-   use da_control, only: use_cv_w
+   use da_control, only: use_cv_w, use_cv_nr
    use da_control, only: pseudo_tpw, pseudo_ztd, pseudo_ref, pseudo_uvtpq, pseudo_elv, anal_type_qcobs
    use da_control, only: use_gpsephobs, gpseph_loadbalance, gpseph
    use da_control, only: ep_format

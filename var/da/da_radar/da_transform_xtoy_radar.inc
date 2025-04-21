@@ -106,7 +106,10 @@ subroutine da_transform_xtoy_radar (grid, iv, y)
      allocate (model_qnr(iv%info(radar)%max_lev,iv%info(radar)%n1:iv%info(radar)%n2))
      allocate (model_qns(iv%info(radar)%max_lev,iv%info(radar)%n1:iv%info(radar)%n2))
      allocate (model_qng(iv%info(radar)%max_lev,iv%info(radar)%n1:iv%info(radar)%n2))
-   end if
+   else if (use_cv_nr .and. use_radar_rnr) then
+     allocate (model_qnr(iv%info(radar)%max_lev,iv%info(radar)%n1:iv%info(radar)%n2))
+     allocate (model_qnrb(iv%info(radar)%max_lev,iv%info(radar)%n1:iv%info(radar)%n2))
+   end if 
    !------------------------
 
    do n=iv%info(radar)%n1,iv%info(radar)%n2
@@ -123,6 +126,8 @@ subroutine da_transform_xtoy_radar (grid, iv, y)
          model_qnrb(k,n) = 0
          model_qnsb(k,n) = 0
          model_qngb(k,n) = 0
+	else if (use_cv_nr .and. use_radar_rnr) then
+           model_qnrb(k,n) = amax1(iv%radar(n)%model_qnr(k), 10.)
         end if
          !------------------------
       end do
@@ -142,11 +147,17 @@ subroutine da_transform_xtoy_radar (grid, iv, y)
    model_qsn = 0.0
    model_qgr = 0.0
    model_qrn = 0.0
+   if (use_cv_nr .and. use_radar_rnr) then
+     model_qnr = 0.0
+   end if
    if ( cloud_cv_options >= 1 ) then
       call da_interp_lin_3d (grid%xa%qrn, iv%info(radar), model_qrn)
       if ( cloud_cv_options >= 2 ) then
          call da_interp_lin_3d (grid%xa%qsn, iv%info(radar), model_qsn)
          call da_interp_lin_3d (grid%xa%qgr, iv%info(radar), model_qgr)
+	 if (use_cv_nr .and. use_radar_rnr) then
+            call da_interp_lin_3d (grid%xa%qnr, iv%info(radar), model_qnr)
+	 end if
       end if
    end if
    call da_interp_lin_3d (grid%xa%q,   iv%info(radar), model_qv)
@@ -212,6 +223,11 @@ subroutine da_transform_xtoy_radar (grid, iv, y)
                if (iv % radar(n) % rgr(k) % qc >= obs_qc_pointer) then
                   y%radar(n)%rgr(k) = model_qgr(k,n)
                end if
+	       if ( use_radar_rnr .and. use_cv_nr ) then
+                  if (iv % radar(n) % rnr(k) % qc >= obs_qc_pointer) then
+                     y%radar(n)%rnr(k) = model_qnr(k,n)
+		  end if
+	       end if 
             end if
 
             if (use_radar_rqv) then
@@ -243,10 +259,8 @@ subroutine da_transform_xtoy_radar (grid, iv, y)
    deallocate (model_qv)
    deallocate (model_t)
    deallocate (model_rho)
-   !if ( use_radar_rqv ) then
-      deallocate (model_tb)
-      deallocate (model_qvb)
-   !end if
+   deallocate (model_tb)
+   deallocate (model_qvb)
 
    if (use_radar_rf .and. radar_rf_opt==2) then
      deallocate (model_qsnb)
@@ -257,6 +271,11 @@ subroutine da_transform_xtoy_radar (grid, iv, y)
      deallocate (model_qnrb)
      deallocate (model_qnsb)
      deallocate (model_qngb)
+   end if
+  
+   if (use_cv_nr .and. use_radar_rnr) then
+     deallocate (model_qnr)
+     deallocate (model_qnrb)
    end if
 
    if (trace_use) call da_trace_exit("da_transform_xtoy_radar")

@@ -395,12 +395,17 @@ subroutine da_jo_and_grady(iv, re, jot, jo, jo_grad_y)
 
    if (iv%info(radar)%nlocal > 0) then
       call da_jo_and_grady_radar(iv, re, jo, jo_grad_y)
-      jo_radar = jo%radar_rv + jo%radar_rf + jo%radar_rrn + jo%radar_rsn + jo%radar_rgr + jo%radar_rqv
+      jo_radar = jo%radar_rv + jo%radar_rf + jo%radar_zdr + jo%radar_kdp +jo%radar_cc + &
+                 jo%radar_rnr + jo%radar_rrn + jo%radar_rsn + jo%radar_rgr + jo%radar_rqv
       if (print_detail_grad) then
           write(unit=stdout, fmt='(a, e24.12)') &
                ' jo_radar          ', jo_radar, &
                '   jo%radar_rv     ', jo%radar_rv, &
                '   jo%radar_rf     ', jo%radar_rf, &
+	       '   jo%radar_zdr    ', jo%radar_zdr, &
+               '   jo%radar_kdp    ', jo%radar_kdp, &
+	       '   jo%radar_cc     ', jo%radar_cc, &
+               '   jo%radar_rnr    ', jo%radar_rnr, &
                '   jo%radar_rrn    ', jo%radar_rrn, &
                '   jo%radar_rsn    ', jo%radar_rsn, &
                '   jo%radar_rgr    ', jo%radar_rgr, &
@@ -409,6 +414,10 @@ subroutine da_jo_and_grady(iv, re, jot, jo, jo_grad_y)
    else
       jo % radar_rv  = 0.0
       jo % radar_rf  = 0.0
+      jo % radar_zdr = 0.0
+      jo % radar_kdp = 0.0
+      jo % radar_cc  = 0.0
+      jo % radar_rnr = 0.0
       jo % radar_rrn = 0.0
       jo % radar_rsn = 0.0
       jo % radar_rgr = 0.0

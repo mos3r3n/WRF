@@ -373,12 +373,12 @@ subroutine da_calculate_j(it, iter, cv_size, cv_size_jb, cv_size_je, cv_size_jp,
    !-------------------------------------------------------------------------
    if (rootproc) then
       if (it == 1 .and. iter == 0) then
-         write(unit=cost_unit,fmt='(a)')'Outer    EPS     Inner      J           Jb       Jo           Jc         Je         Jd         Jp         Js        Jl         Jm         Jt'
+         write(unit=cost_unit,fmt='(a)')'Outer    EPS     Inner             J                  Jb              Jo                  Je         Jc         Jd         Jp         Js        Jl         Jm         Jt'
          write(unit=cost_unit,fmt='(a)')'Iter             Iter                            '
       end if
 
-      write(unit=cost_unit,fmt='(2x,i2,1x,e10.3,2x,i4,11(1x,f10.3))') &
-         it, EPS(it), iter, j % total, j % jb, j % jo % total, j % jc, j % je, j % jd, j % jp, j%js, j%jl, j%jm, j%jt
+      write(unit=cost_unit,fmt='(2x,i2,1x,e10.3,2x,i4,4(1x,f17.3),7(1x,f10.3))') &
+         it, EPS(it), iter, j % total, j % jb, j % jo % total, j % je, j % jc, j % jd, j % jp, j%js, j%jl, j%jm, j%jt
    end if
 
    call da_deallocate_y (jo_grad_y)

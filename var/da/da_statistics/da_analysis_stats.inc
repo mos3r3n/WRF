@@ -29,7 +29,7 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
    integer :: kdim  ! k range 
 
    real    :: um, vm, tm, pm, qm , qcwm, qrnm ! On local domain.
-   real    :: qcim, qsnm, qgrm, wm
+   real    :: qcim, qsnm, qgrm, qnrm, wm
    real    :: rij_g, rijk_g      ! On global domain.
 
    type (maxmin_field_type) :: max_u(kts:kte), max_v(kts:kte),     &
@@ -46,6 +46,7 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
                                min_qci(kts:kte), min_qsn(kts:kte), &
                                min_qgr(kts:kte)
    type (maxmin_field_type) :: max_w(kts:kte), min_w(kts:kte)
+   type (maxmin_field_type) :: max_qnr(kts:kte), min_qnr(kts:kte)
 
 #if (WRF_CHEM == 1)
    type (maxmin_field_type) :: max_chem(kts:kte,num_chem), min_chem(kts:kte,num_chem)
@@ -55,11 +56,10 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
 
    real                     :: uv(kts:kte), vv(kts:kte),     &
                                tv(kts:kte), pv(kts:kte),     &
-                               qv(kts:kte)
+                               qv(kts:kte), wv(kts:kte)
    real                     :: qcwv(kts:kte), qrnv(kts:kte), &
                                qciv(kts:kte), qsnv(kts:kte), &
-                               qgrv(kts:kte)
-   real                     :: wv(kts:kte)
+                               qgrv(kts:kte), qnrv(kts:kte)
 
    call da_trace_entry("da_analysis_stats")
 
@@ -96,7 +96,23 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
                 'qcw   i    j          ', &
                 'qrn   i    j'
          case ( 2, 3 )
-           write(unit=stats_unit, fmt='(12a/)') &
+	   if (use_cv_nr) then
+              write(unit=stats_unit, fmt='(13a/)') &
+                ' Lvl         ', &
+                'u     i    j          ', &
+                'v     i    j          ', &
+                'w     i    j          ', &
+                't     i    j          ', &
+                'p     i    j          ', &
+                'q     i    j          ', &
+                'qcw   i    j          ', &
+                'qrn   i    j          ', &
+                'qci   i    j          ', &
+                'qsn   i    j          ', &
+                'qgr   i    j          ', &
+		'qnr   i    j'
+	   else
+              write(unit=stats_unit, fmt='(12a/)') &
                 ' Lvl         ', &
                 'u     i    j          ', &
                 'v     i    j          ', &
@@ -109,6 +125,7 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
                 'qci   i    j          ', &
                 'qsn   i    j          ', &
                 'qgr   i    j'
+           end if
          end select
       else
          select case ( cloud_cv_options )
@@ -131,7 +148,22 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
                 'qcw   i    j          ', &
                 'qrn   i    j'
         case ( 2, 3 )
-           write(unit=stats_unit, fmt='(11a/)') &
+	   if (use_cv_nr) then
+	      write(unit=stats_unit, fmt='(12a/)') &
+                ' Lvl         ', &
+                'u     i    j          ', &
+                'v     i    j          ', &
+                't     i    j          ', &
+                'p     i    j          ', &
+                'q     i    j          ', &
+                'qcw   i    j          ', &
+                'qrn   i    j          ', &
+                'qci   i    j          ', &
+                'qsn   i    j          ', &
+                'qgr   i    j          ', &
+		'qnr   i    j'
+	   else
+              write(unit=stats_unit, fmt='(11a/)') &
                 ' Lvl         ', &
                 'u     i    j          ', &
                 'v     i    j          ', &
@@ -143,6 +175,7 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
                 'qci   i    j          ', &
                 'qsn   i    j          ', &
                 'qgr   i    j'
+	   end if
         end select
       end if
 #if (WRF_CHEM == 1)
@@ -201,6 +234,10 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
       call da_proc_maxmin_combine(kdim, max_qsn, min_qsn)
       call da_maxmin_in_field(grid%xa%qgr(its:ite,jts:jte,kts:kte), max_qgr, min_qgr)
       call da_proc_maxmin_combine(kdim, max_qgr, min_qgr)
+      if ( use_cv_nr ) then
+         call da_maxmin_in_field(grid%xa%qnr(its:ite,jts:jte,kts:kte), max_qnr, min_qnr)
+         call da_proc_maxmin_combine(kdim, max_qnr, min_qnr)
+      end if
    end if
 
    if ( use_cv_w ) then
@@ -228,6 +265,7 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
    qcim = 999999.0
    qsnm = 999999.0
    qgrm = 999999.0
+   qnrm = 999999.0
 
    wm = 999999.0
 
@@ -248,9 +286,15 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
                  min_u(k), min_v(k), min_w(k), min_t(k), min_p(k), min_q(k),  &
                  min_qcw(k), min_qrn(k)
            case ( 2, 3 )
-              write(unit=stats_unit, fmt='(i4,5(f12.4,2i5),6(e12.4,2i5))') k, &
-                 min_u(k), min_v(k), min_w(k), min_t(k), min_p(k), min_q(k),  &
-                 min_qcw(k), min_qrn(k), min_qci(k), min_qsn(k), min_qgr(k)
+	      if (use_cv_nr) then
+                 write(unit=stats_unit, fmt='(i4,5(f12.4,2i5),7(e12.4,2i5))') k, &
+                   min_u(k), min_v(k), min_w(k), min_t(k), min_p(k), min_q(k),  &
+                   min_qcw(k), min_qrn(k), min_qci(k), min_qsn(k), min_qgr(k), min_qnr(k)
+	      else
+                 write(unit=stats_unit, fmt='(i4,5(f12.4,2i5),6(e12.4,2i5))') k, &
+                   min_u(k), min_v(k), min_w(k), min_t(k), min_p(k), min_q(k),  &
+                   min_qcw(k), min_qrn(k), min_qci(k), min_qsn(k), min_qgr(k)
+	      end if
            end select
          else
            select case ( cloud_cv_options )
@@ -262,9 +306,15 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
                  min_u(k), min_v(k), min_t(k), min_p(k), min_q(k),            &
                  min_qcw(k), min_qrn(k)
            case ( 2, 3 )
-              write(unit=stats_unit, fmt='(i4,4(f12.4,2i5),6(e12.4,2i5))') k, &
-                 min_u(k), min_v(k), min_t(k), min_p(k), min_q(k),            &
-                 min_qcw(k), min_qrn(k), min_qci(k), min_qsn(k), min_qgr(k)
+	      if (use_cv_nr) then
+                 write(unit=stats_unit, fmt='(i4,4(f12.4,2i5),7(e12.4,2i5))') k, &
+                    min_u(k), min_v(k), min_t(k), min_p(k), min_q(k),            &
+                    min_qcw(k), min_qrn(k), min_qci(k), min_qsn(k), min_qgr(k), min_qnr(k)
+	      else
+                 write(unit=stats_unit, fmt='(i4,4(f12.4,2i5),6(e12.4,2i5))') k, &
+                    min_u(k), min_v(k), min_t(k), min_p(k), min_q(k),            &
+                    min_qcw(k), min_qrn(k), min_qci(k), min_qsn(k), min_qgr(k)
+	      end if 
            end select
          end if
 #if (WRF_CHEM == 1)
@@ -303,6 +353,9 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
          qcim=minval(min_qci(:)%value)
          qsnm=minval(min_qsn(:)%value)
          qgrm=minval(min_qgr(:)%value)
+	 if (use_cv_nr) then
+            qnrm=minval(min_qnr(:)%value)
+	 end if
       end if
       if ( use_cv_w ) then
          wm=minval(min_w(:)%value)
@@ -325,8 +378,13 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
            write(unit=stats_unit, fmt='(a,5(f12.4,10x),3(e12.4,10x))') ' ALL', &
               um, vm, wm, tm, pm, qm, qcwm, qrnm
         case ( 2, 3 )
-           write(unit=stats_unit, fmt='(a,5(f12.4,10x),6(e12.4,10x))') ' ALL', &
-              um, vm, wm, tm, pm, qm, qcwm, qrnm, qcim, qsnm, qgrm
+	   if (use_cv_nr) then
+              write(unit=stats_unit, fmt='(a,5(f12.4,10x),7(e12.4,10x))') ' ALL', &
+                um, vm, wm, tm, pm, qm, qcwm, qrnm, qcim, qsnm, qgrm, qnrm
+	   else
+              write(unit=stats_unit, fmt='(a,5(f12.4,10x),6(e12.4,10x))') ' ALL', &
+                um, vm, wm, tm, pm, qm, qcwm, qrnm, qcim, qsnm, qgrm
+	   end if
         end select
       else
         select case ( cloud_cv_options )
@@ -337,8 +395,13 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
            write(unit=stats_unit, fmt='(a,4(f12.4,10x),3(e12.4,10x))') ' ALL', &
               um, vm, tm, pm, qm, qcwm, qrnm
         case ( 2, 3 )
-           write(unit=stats_unit, fmt='(a,4(f12.4,10x),6(e12.4,10x))') ' ALL', &
-              um, vm, tm, pm, qm, qcwm, qrnm, qcim, qsnm, qgrm
+	   if (use_cv_nr) then
+              write(unit=stats_unit, fmt='(a,4(f12.4,10x),7(e12.4,10x))') ' ALL', &
+                 um, vm, tm, pm, qm, qcwm, qrnm, qcim, qsnm, qgrm, qnrm
+	   else
+              write(unit=stats_unit, fmt='(a,4(f12.4,10x),6(e12.4,10x))') ' ALL', &
+                 um, vm, tm, pm, qm, qcwm, qrnm, qcim, qsnm, qgrm
+	   end if
         end select
       end if
 
@@ -408,7 +471,23 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
                 'qcw   i    j          ', &
                 'qrn   i    j'
          case ( 2, 3 )
-           write(unit=stats_unit, fmt='(12a/)') &
+	   if (use_cv_nr) then
+              write(unit=stats_unit, fmt='(13a/)') &
+                ' Lvl         ', &
+                'u     i    j          ', &
+                'v     i    j          ', &
+                'w     i    j          ', &
+                't     i    j          ', &
+                'p     i    j          ', &
+                'q     i    j          ', &
+                'qcw   i    j          ', &
+                'qrn   i    j          ', &
+                'qci   i    j          ', &
+                'qsn   i    j          ', &
+                'qgr   i    j          ', &
+		'qnr   i    j'
+	    else
+               write(unit=stats_unit, fmt='(12a/)') &
                 ' Lvl         ', &
                 'u     i    j          ', &
                 'v     i    j          ', &
@@ -421,6 +500,7 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
                 'qci   i    j          ', &
                 'qsn   i    j          ', &
                 'qgr   i    j'
+	    end if
          end select
       else
         select case ( cloud_cv_options )
@@ -443,18 +523,34 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
               'qcw   i    j          ', &
               'qrn   i    j'
         case ( 2, 3 )
-           write(unit=stats_unit, fmt='(11a/)') &
-              ' Lvl         ', &
-              'u     i    j          ', &
-              'v     i    j          ', &
-              't     i    j          ', &
-              'p     i    j          ', &
-              'q     i    j          ', &
-              'qcw   i    j          ', &
-              'qrn   i    j          ', &
-              'qci   i    j          ', &
-              'qsn   i    j          ', &
-              'qgr   i    j'
+	   if (use_cv_nr) then
+              write(unit=stats_unit, fmt='(12a/)') &
+                ' Lvl         ', &
+                'u     i    j          ', &
+                'v     i    j          ', &
+                't     i    j          ', &
+                'p     i    j          ', &
+                'q     i    j          ', &
+                'qcw   i    j          ', &
+                'qrn   i    j          ', &
+                'qci   i    j          ', &
+                'qsn   i    j          ', &
+                'qgr   i    j          ', &
+		'qnr   i    j'
+	   else
+              write(unit=stats_unit, fmt='(11a/)') &
+                ' Lvl         ', &
+                'u     i    j          ', &
+                'v     i    j          ', &
+                't     i    j          ', &
+                'p     i    j          ', &
+                'q     i    j          ', &
+                'qcw   i    j          ', &
+                'qrn   i    j          ', &
+                'qci   i    j          ', &
+                'qsn   i    j          ', &
+                'qgr   i    j'
+	   end if
         end select
      end if
    end if !rootproc
@@ -472,9 +568,15 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
                  max_u(k), max_v(k), max_w(k), max_t(k), max_p(k), max_q(k),  &
                  max_qcw(k), max_qrn(k)
            case ( 2, 3 )
-              write(unit=stats_unit, fmt='(i4,5(f12.4,2i5),6(e12.4,2i5))') k, &
-                 max_u(k), max_v(k), max_w(k), max_t(k), max_p(k), max_q(k),            &
-                 max_qcw(k), max_qrn(k), max_qci(k), max_qsn(k), max_qgr(k)
+	      if (use_cv_nr) then
+                 write(unit=stats_unit, fmt='(i4,5(f12.4,2i5),7(e12.4,2i5))') k, &
+                   max_u(k), max_v(k), max_w(k), max_t(k), max_p(k), max_q(k),  &
+                   max_qcw(k), max_qrn(k), max_qci(k), max_qsn(k), max_qgr(k), max_qnr(k)
+	      else
+                 write(unit=stats_unit, fmt='(i4,5(f12.4,2i5),6(e12.4,2i5))') k, &
+                   max_u(k), max_v(k), max_w(k), max_t(k), max_p(k), max_q(k),  &
+                   max_qcw(k), max_qrn(k), max_qci(k), max_qsn(k), max_qgr(k) 
+	      end if
            end select
          else
            select case ( cloud_cv_options )
@@ -486,9 +588,15 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
                  max_u(k), max_v(k), max_t(k), max_p(k), max_q(k),            &
                  max_qcw(k), max_qrn(k)
            case ( 2, 3 )
-              write(unit=stats_unit, fmt='(i4,4(f12.4,2i5),6(e12.4,2i5))') k, &
-                 max_u(k), max_v(k), max_t(k), max_p(k), max_q(k),            &
-                 max_qcw(k), max_qrn(k), max_qci(k), max_qsn(k), max_qgr(k)
+	      if (use_cv_nr) then
+                 write(unit=stats_unit, fmt='(i4,4(f12.4,2i5),7(e12.4,2i5))') k, &
+                    max_u(k), max_v(k), max_t(k), max_p(k), max_q(k),            &
+                    max_qcw(k), max_qrn(k), max_qci(k), max_qsn(k), max_qgr(k), max_qnr(k)
+              else
+                 write(unit=stats_unit, fmt='(i4,4(f12.4,2i5),6(e12.4,2i5))') k, &
+                    max_u(k), max_v(k), max_t(k), max_p(k), max_q(k),            &
+                    max_qcw(k), max_qrn(k), max_qci(k), max_qsn(k), max_qgr(k)
+	      end if
            end select
          end if
 
@@ -528,6 +636,9 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
          qcim=maxval(max_qci(:)%value)
          qsnm=maxval(max_qsn(:)%value)
          qgrm=maxval(max_qgr(:)%value)
+	 if (use_cv_nr) then
+            qnrm=maxval(max_qnr(:)%value)
+	 end if
       end if
       if (use_cv_w) then
          wm=maxval(max_w(:)%value)
@@ -550,8 +661,13 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
           write(unit=stats_unit, fmt='(a,5(f12.4,10x),3(e12.4,10x))') ' ALL', &
              um, vm, wm, tm, pm, qm, qcwm, qrnm
         case ( 2, 3 )
-          write(unit=stats_unit, fmt='(a,5(f12.4,10x),6(e12.4,10x))') ' ALL', &
-             um, vm, wm, tm, pm, qm, qcwm, qrnm, qcim, qsnm, qgrm
+	  if (use_cv_nr) then
+             write(unit=stats_unit, fmt='(a,5(f12.4,10x),7(e12.4,10x))') ' ALL', &
+               um, vm, wm, tm, pm, qm, qcwm, qrnm, qcim, qsnm, qgrm, qnrm
+	  else
+             write(unit=stats_unit, fmt='(a,5(f12.4,10x),6(e12.4,10x))') ' ALL', &
+               um, vm, wm, tm, pm, qm, qcwm, qrnm, qcim, qsnm, qgrm
+	  end if
         end select 
       else
         select case ( cloud_cv_options )
@@ -562,8 +678,13 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
           write(unit=stats_unit, fmt='(a,4(f12.4,10x),3(e12.4,10x))') ' ALL', &
              um, vm, tm, pm, qm, qcwm, qrnm
         case ( 2, 3 )
-          write(unit=stats_unit, fmt='(a,4(f12.4,10x),6(e12.4,10x))') ' ALL', &
-             um, vm, tm, pm, qm, qcwm, qrnm, qcim, qsnm, qgrm
+	  if (use_cv_nr) then
+             write(unit=stats_unit, fmt='(a,4(f12.4,10x),7(e12.4,10x))') ' ALL', &
+               um, vm, tm, pm, qm, qcwm, qrnm, qcim, qsnm, qgrm, qnrm
+	  else
+             write(unit=stats_unit, fmt='(a,4(f12.4,10x),6(e12.4,10x))') ' ALL', &
+               um, vm, tm, pm, qm, qcwm, qrnm, qcim, qsnm, qgrm
+	  end if
         end select
       end if
 #if (WRF_CHEM == 1)
@@ -607,8 +728,13 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
            write(unit=stats_unit, fmt='(a/)') &
               ' Lvl        u           v           w           t           p           q           qcw         qrn'
         case ( 2, 3 )
-           write(unit=stats_unit, fmt='(a/)') &
-              ' Lvl        u           v           w           t           p           q           qcw         qrn         qci         qsn         qgr'
+	   if (use_cv_nr) then
+              write(unit=stats_unit, fmt='(a/)') &
+                 ' Lvl        u           v           w           t           p           q           qcw         qrn         qci         qsn         qgr         qnr'
+           else
+              write(unit=stats_unit, fmt='(a/)') &
+                 ' Lvl        u           v           w           t           p           q           qcw         qrn         qci         qsn         qgr'
+	   end if
         end select
       else
         select case ( cloud_cv_options )
@@ -619,8 +745,13 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
            write(unit=stats_unit, fmt='(a/)') &
               ' Lvl        u           v           t           p           q           qcw         qrn'
         case ( 2, 3 )
-           write(unit=stats_unit, fmt='(a/)') &
-              ' Lvl        u           v           t           p           q           qcw         qrn         qci         qsn         qgr'
+	   if (use_cv_nr) then
+              write(unit=stats_unit, fmt='(a/)') &
+                 ' Lvl        u           v           t           p           q           qcw         qrn         qci         qsn         qgr         qnr'
+	   else
+              write(unit=stats_unit, fmt='(a/)') &
+                 ' Lvl        u           v           t           p           q           qcw         qrn         qci         qsn         qgr'
+	   end if
         end select
       end if
    end if !rootproc
@@ -678,6 +809,13 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
       call da_proc_sum_real (qciv)
       call da_proc_sum_real (qsnv)
       call da_proc_sum_real (qgrv)
+      if (use_cv_nr) then
+        qnrm = 0.0
+	do k = kts, kte
+          qnrv(k) = sum(grid%xa%qnr(its:ite,jts:jte,k))
+	end do
+	call da_proc_sum_real (qnrv)
+      end if
    end if
 
    if ( use_cv_w ) then
@@ -702,11 +840,19 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
                  tv(k)*rij_g, pv(k)*rij_g, qv(k)*rij_g,           &
                  qcwv(k)*rij_g, qrnv(k)*rij_g
            case ( 2, 3 )
-              write(unit=stats_unit, fmt='(i4,5f12.4,6e12.4)') k, &
-                 uv(k)*rij_g, vv(k)*rij_g, wv(k)*rij_g,           &
-                 tv(k)*rij_g, pv(k)*rij_g, qv(k)*rij_g,           &
-                 qcwv(k)*rij_g, qrnv(k)*rij_g, qciv(k)*rij_g,     &
-                 qsnv(k)*rij_g, qgrv(k)*rij_g
+	      if (use_cv_nr) then
+                 write(unit=stats_unit, fmt='(i4,5f12.4,7e12.4)') k, &
+                   uv(k)*rij_g, vv(k)*rij_g, wv(k)*rij_g,           &
+                   tv(k)*rij_g, pv(k)*rij_g, qv(k)*rij_g,           &
+                   qcwv(k)*rij_g, qrnv(k)*rij_g, qciv(k)*rij_g,     &
+                   qsnv(k)*rij_g, qgrv(k)*rij_g, qnrv(k)*rij_g
+	      else
+                 write(unit=stats_unit, fmt='(i4,5f12.4,6e12.4)') k, &
+                   uv(k)*rij_g, vv(k)*rij_g, wv(k)*rij_g,           &
+                   tv(k)*rij_g, pv(k)*rij_g, qv(k)*rij_g,           &
+                   qcwv(k)*rij_g, qrnv(k)*rij_g, qciv(k)*rij_g,     &
+                   qsnv(k)*rij_g, qgrv(k)*rij_g
+	      end if
            end select
          else
            select case ( cloud_cv_options )
@@ -720,11 +866,19 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
                  pv(k)*rij_g, qv(k)*rij_g,                        &
                  qcwv(k)*rij_g, qrnv(k)*rij_g
            case ( 2, 3 )
-              write(unit=stats_unit, fmt='(i4,4f12.4,6e12.4)') k, &
-                 uv(k)*rij_g, vv(k)*rij_g, tv(k)*rij_g, &
-                 pv(k)*rij_g, qv(k)*rij_g,                        &
-                 qcwv(k)*rij_g, qrnv(k)*rij_g, qciv(k)*rij_g,     &
-                 qsnv(k)*rij_g, qgrv(k)*rij_g
+	      if (use_cv_nr) then
+                 write(unit=stats_unit, fmt='(i4,4f12.4,7e12.4)') k, &
+                   uv(k)*rij_g, vv(k)*rij_g, tv(k)*rij_g, &
+                   pv(k)*rij_g, qv(k)*rij_g,                        &
+                   qcwv(k)*rij_g, qrnv(k)*rij_g, qciv(k)*rij_g,     &
+                   qsnv(k)*rij_g, qgrv(k)*rij_g, qnrv(k)*rij_g
+	      else
+                 write(unit=stats_unit, fmt='(i4,4f12.4,6e12.4)') k, &
+                   uv(k)*rij_g, vv(k)*rij_g, tv(k)*rij_g, &
+                   pv(k)*rij_g, qv(k)*rij_g,                        &
+                   qcwv(k)*rij_g, qrnv(k)*rij_g, qciv(k)*rij_g,     &
+                   qsnv(k)*rij_g, qgrv(k)*rij_g
+	      end if
            end select
          end if
   
@@ -768,6 +922,9 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
             qcim = qcim + qciv(k)
             qsnm = qsnm + qsnv(k)
             qgrm = qgrm + qgrv(k)
+	    if (use_cv_nr) then
+               qnrm = qnrm + qnrv(k)
+	    end if
          end if
          if ( use_cv_w ) then
             wm=wm+wv(k)
@@ -786,9 +943,15 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
                um*rijk_g, vm*rijk_g, wm*rijk_g, tm*rijk_g, pm*rijk_g, qm*rijk_g, &
                qcwm*rijk_g, qrnm*rijk_g
          case ( 2, 3 )
-            write(unit=stats_unit, fmt='(i4,5f12.4,6e12.4)') k, &
-               um*rijk_g, vm*rijk_g, wm*rijk_g, tm*rijk_g, pm*rijk_g, qm*rijk_g, &
-               qcwm*rijk_g, qrnm*rijk_g, qcim*rijk_g, qsnm*rijk_g, qgrm*rijk_g
+	    if (use_cv_nr) then
+               write(unit=stats_unit, fmt='(i4,5f12.4,7e12.4)') k, &
+                 um*rijk_g, vm*rijk_g, wm*rijk_g, tm*rijk_g, pm*rijk_g, qm*rijk_g, &
+                 qcwm*rijk_g, qrnm*rijk_g, qcim*rijk_g, qsnm*rijk_g, qgrm*rijk_g, qnrm*rijk_g
+	    else
+               write(unit=stats_unit, fmt='(i4,5f12.4,6e12.4)') k, &
+                 um*rijk_g, vm*rijk_g, wm*rijk_g, tm*rijk_g, pm*rijk_g, qm*rijk_g, &
+                 qcwm*rijk_g, qrnm*rijk_g, qcim*rijk_g, qsnm*rijk_g, qgrm*rijk_g
+	    end if
          end select
       else
          select case ( cloud_cv_options )
@@ -800,9 +963,15 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
                um*rijk_g, vm*rijk_g, tm*rijk_g, pm*rijk_g, qm*rijk_g, &
                qcwm*rijk_g, qrnm*rijk_g
          case ( 2, 3 )
-            write(unit=stats_unit, fmt='(a,4f12.4,6e12.4)') ' ALL',   &
-               um*rijk_g, vm*rijk_g, tm*rijk_g, pm*rijk_g, qm*rijk_g, &
-               qcwm*rijk_g, qrnm*rijk_g, qcim*rijk_g, qsnm*rijk_g, qgrm*rijk_g
+	    if (use_cv_nr) then
+               write(unit=stats_unit, fmt='(i4,4f12.4,7e12.4)') k, &
+                 um*rijk_g, vm*rijk_g, tm*rijk_g, pm*rijk_g, qm*rijk_g, &
+                 qcwm*rijk_g, qrnm*rijk_g, qcim*rijk_g, qsnm*rijk_g, qgrm*rijk_g, qnrm*rijk_g
+            else
+               write(unit=stats_unit, fmt='(a,4f12.4,6e12.4)') ' ALL',   &
+                 um*rijk_g, vm*rijk_g, tm*rijk_g, pm*rijk_g, qm*rijk_g, &
+                 qcwm*rijk_g, qrnm*rijk_g, qcim*rijk_g, qsnm*rijk_g, qgrm*rijk_g
+            end if
          end select
       end if
 
@@ -849,8 +1018,13 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
            write(unit=stats_unit, fmt='(a/)') &
               ' Lvl        u           v           w           t           p           q           qcw         qrn'
         case ( 2, 3 )
-           write(unit=stats_unit, fmt='(a/)') &
-              ' Lvl        u           v           w           t           p           q           qcw         qrn         qci         qsn         qgr'
+	   if (use_cv_nr) then
+              write(unit=stats_unit, fmt='(a/)') &
+                ' Lvl        u           v           w           t           p           q           qcw         qrn         qci         qsn         qgr         qnr'
+           else
+              write(unit=stats_unit, fmt='(a/)') &
+                ' Lvl        u           v           w           t           p           q           qcw         qrn         qci         qsn         qgr'
+	   end if
         end select
       else
         select case ( cloud_cv_options )
@@ -861,8 +1035,13 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
            write(unit=stats_unit, fmt='(a/)') &
               ' Lvl        u           v           t           p           q           qcw         qrn'
         case ( 2, 3 )
-           write(unit=stats_unit, fmt='(a/)') &
-              ' Lvl        u           v           t           p           q           qcw         qrn         qci         qsn         qgr'
+	   if (use_cv_nr) then
+              write(unit=stats_unit, fmt='(a/)') &
+                ' Lvl        u           v           t           p           q           qcw         qrn         qci         qsn         qgr         qnr'
+           else
+              write(unit=stats_unit, fmt='(a/)') &
+                ' Lvl        u           v           t           p           q           qcw         qrn         qci         qsn         qgr'
+	   end if
         end select
       end if
 
@@ -891,11 +1070,13 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
    qciv = 0.0
    qsnv = 0.0
    qgrv = 0.0
+   qnrv = 0.0
    qcwm = 0.0
    qrnm = 0.0
    qcim = 0.0
    qsnm = 0.0
    qgrm = 0.0
+   qnrm = 0.0
 
    do k = kts, kte
       do j=jts,jte
@@ -947,12 +1128,16 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
                qciv(k) = qciv(k) + grid%xa%qci(i,j,k) * grid%xa%qci(i,j,k)
                qsnv(k) = qsnv(k) + grid%xa%qsn(i,j,k) * grid%xa%qsn(i,j,k)
                qgrv(k) = qgrv(k) + grid%xa%qgr(i,j,k) * grid%xa%qgr(i,j,k)
+	       if (use_cv_nr) then
+                  qnrv(k) = qnrv(k) + grid%xa%qnr(i,j,k) * grid%xa%qnr(i,j,k)
+	       end if
             end do
          end do
       end do
       call da_proc_sum_real (qciv)
       call da_proc_sum_real (qsnv)
       call da_proc_sum_real (qgrv)
+      if (use_cv_nr) call da_proc_sum_real (qnrv)
    end if
    
    if ( use_cv_w ) then
@@ -989,18 +1174,34 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
                 sqrt(qcwv(k)*rij_g), &
                 sqrt(qrnv(k)*rij_g)
            case ( 2, 3 )
-              write(unit=stats_unit, fmt='(i4,5f12.4,6e12.4)') k, &
-                sqrt(uv(k)*rij_g),   &
-                sqrt(vv(k)*rij_g),   &
-                sqrt(wv(k)*rij_g),   &
-                sqrt(tv(k)*rij_g),   &
-                sqrt(pv(k)*rij_g),   &
-                sqrt(qv(k)*rij_g),   &
-                sqrt(qcwv(k)*rij_g), &
-                sqrt(qrnv(k)*rij_g), &
-                sqrt(qciv(k)*rij_g), &
-                sqrt(qsnv(k)*rij_g), &
-                sqrt(qgrv(k)*rij_g)
+	      if (use_cv_nr) then
+                write(unit=stats_unit, fmt='(i4,5f12.4,7e12.4)') k, &
+                  sqrt(uv(k)*rij_g),   &
+                  sqrt(vv(k)*rij_g),   &
+                  sqrt(wv(k)*rij_g),   &
+                  sqrt(tv(k)*rij_g),   &
+                  sqrt(pv(k)*rij_g),   &
+                  sqrt(qv(k)*rij_g),   &
+                  sqrt(qcwv(k)*rij_g), &
+                  sqrt(qrnv(k)*rij_g), &
+                  sqrt(qciv(k)*rij_g), &
+                  sqrt(qsnv(k)*rij_g), &
+                  sqrt(qgrv(k)*rij_g), &
+	  	  sqrt(qnrv(k)*rij_g)
+	      else
+                write(unit=stats_unit, fmt='(i4,5f12.4,6e12.4)') k, &
+                  sqrt(uv(k)*rij_g),   &
+                  sqrt(vv(k)*rij_g),   &
+                  sqrt(wv(k)*rij_g),   &
+                  sqrt(tv(k)*rij_g),   &
+                  sqrt(pv(k)*rij_g),   &
+                  sqrt(qv(k)*rij_g),   &
+                  sqrt(qcwv(k)*rij_g), &
+                  sqrt(qrnv(k)*rij_g), &
+                  sqrt(qciv(k)*rij_g), &
+                  sqrt(qsnv(k)*rij_g), &
+                  sqrt(qgrv(k)*rij_g)
+	      end if
            end select
          else
            select case ( cloud_cv_options )
@@ -1021,17 +1222,32 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
                 sqrt(qcwv(k)*rij_g), &
                 sqrt(qrnv(k)*rij_g)
            case ( 2, 3 )
-              write(unit=stats_unit, fmt='(i4,4f12.4,6e12.4)') k, &
-                sqrt(uv(k)*rij_g),   &
-                sqrt(vv(k)*rij_g),   &
-                sqrt(tv(k)*rij_g),   &
-                sqrt(pv(k)*rij_g),   &
-                sqrt(qv(k)*rij_g),   &
-                sqrt(qcwv(k)*rij_g), &
-                sqrt(qrnv(k)*rij_g), &
-                sqrt(qciv(k)*rij_g), &
-                sqrt(qsnv(k)*rij_g), &
-                sqrt(qgrv(k)*rij_g)
+	      if (use_cv_nr) then
+                write(unit=stats_unit, fmt='(i4,4f12.4,7e12.4)') k, &
+                  sqrt(uv(k)*rij_g),   &
+                  sqrt(vv(k)*rij_g),   &
+                  sqrt(tv(k)*rij_g),   &
+                  sqrt(pv(k)*rij_g),   &
+                  sqrt(qv(k)*rij_g),   &
+                  sqrt(qcwv(k)*rij_g), &
+                  sqrt(qrnv(k)*rij_g), &
+                  sqrt(qciv(k)*rij_g), &
+                  sqrt(qsnv(k)*rij_g), &
+                  sqrt(qgrv(k)*rij_g), &
+		  sqrt(qnrv(k)*rij_g)
+	      else
+                write(unit=stats_unit, fmt='(i4,4f12.4,6e12.4)') k, &
+                  sqrt(uv(k)*rij_g),   &
+                  sqrt(vv(k)*rij_g),   &
+                  sqrt(tv(k)*rij_g),   &
+                  sqrt(pv(k)*rij_g),   &
+                  sqrt(qv(k)*rij_g),   &
+                  sqrt(qcwv(k)*rij_g), &
+                  sqrt(qrnv(k)*rij_g), &
+                  sqrt(qciv(k)*rij_g), &
+                  sqrt(qsnv(k)*rij_g), &
+                  sqrt(qgrv(k)*rij_g)
+	      end if
            end select
          end if
 #if (WRF_CHEM == 1)
@@ -1079,6 +1295,8 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
          if ( cloud_cv_options >= 2 ) then
             qcim=qcim+qciv(k)
             qsnm=qsnm+qsnv(k)
+	    qgrm=qgrm+qgrv(k)
+	    if (use_cv_nr) qnrm=qnrm+qnrv(k)
          end if
          if ( use_cv_w ) then
             wm=wm+wv(k)
@@ -1099,11 +1317,19 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
              sqrt(tm*rijk_g), sqrt(pm*rijk_g), sqrt(qm*rijk_g),   &
              sqrt(qcwm*rijk_g), sqrt(qrnm*rijk_g)
         case ( 2, 3 )
-           write(unit=stats_unit, fmt='(a,5f12.4,6e12.4)') ' ALL', &
-             sqrt(um*rijk_g), sqrt(vm*rijk_g), sqrt(wm*rijk_g),   &
-             sqrt(tm*rijk_g), sqrt(pm*rijk_g), sqrt(qm*rijk_g),   &
-             sqrt(qcwm*rijk_g), sqrt(qrnm*rijk_g), sqrt(qcim*rijk_g), &
-             sqrt(qsnm*rijk_g), sqrt(qgrm*rijk_g)
+	   if (use_cv_nr) then 
+             write(unit=stats_unit, fmt='(a,5f12.4,7e12.4)') ' ALL', &
+               sqrt(um*rijk_g), sqrt(vm*rijk_g), sqrt(wm*rijk_g),   &
+               sqrt(tm*rijk_g), sqrt(pm*rijk_g), sqrt(qm*rijk_g),   &
+               sqrt(qcwm*rijk_g), sqrt(qrnm*rijk_g), sqrt(qcim*rijk_g), &
+               sqrt(qsnm*rijk_g), sqrt(qgrm*rijk_g), sqrt(qnrm*rijk_g)
+	   else
+             write(unit=stats_unit, fmt='(a,5f12.4,6e12.4)') ' ALL', &
+               sqrt(um*rijk_g), sqrt(vm*rijk_g), sqrt(wm*rijk_g),   &
+               sqrt(tm*rijk_g), sqrt(pm*rijk_g), sqrt(qm*rijk_g),   &
+               sqrt(qcwm*rijk_g), sqrt(qrnm*rijk_g), sqrt(qcim*rijk_g), &
+               sqrt(qsnm*rijk_g), sqrt(qgrm*rijk_g)
+	   end if
         end select
       else
         select case ( cloud_cv_options )
@@ -1117,11 +1343,19 @@ use module_state_description, only : num_chem, PARAM_FIRST_SCALAR               
              sqrt(pm*rijk_g), sqrt(qm*rijk_g),                    &
              sqrt(qcwm*rijk_g), sqrt(qrnm*rijk_g)
         case ( 2, 3 )
-           write(unit=stats_unit, fmt='(a,4f12.4,6e12.4)') ' ALL', &
-             sqrt(um*rijk_g), sqrt(vm*rijk_g), sqrt(tm*rijk_g),   &
-             sqrt(pm*rijk_g), sqrt(qm*rijk_g),                    &
-             sqrt(qcwm*rijk_g), sqrt(qrnm*rijk_g), sqrt(qcim*rijk_g), &
-             sqrt(qsnm*rijk_g), sqrt(qgrm*rijk_g)
+	   if (use_cv_nr) then
+           write(unit=stats_unit, fmt='(a,4f12.4,7e12.4)') ' ALL', &
+               sqrt(um*rijk_g), sqrt(vm*rijk_g), sqrt(tm*rijk_g),   &
+               sqrt(pm*rijk_g), sqrt(qm*rijk_g),                    &
+               sqrt(qcwm*rijk_g), sqrt(qrnm*rijk_g), sqrt(qcim*rijk_g), &
+               sqrt(qsnm*rijk_g), sqrt(qgrm*rijk_g), sqrt(qnrm*rijk_g)
+	   else
+             write(unit=stats_unit, fmt='(a,4f12.4,6e12.4)') ' ALL', &
+               sqrt(um*rijk_g), sqrt(vm*rijk_g), sqrt(tm*rijk_g),   &
+               sqrt(pm*rijk_g), sqrt(qm*rijk_g),                    &
+               sqrt(qcwm*rijk_g), sqrt(qrnm*rijk_g), sqrt(qcim*rijk_g), &
+               sqrt(qsnm*rijk_g), sqrt(qgrm*rijk_g)
+	   end if
         end select
       end if
 

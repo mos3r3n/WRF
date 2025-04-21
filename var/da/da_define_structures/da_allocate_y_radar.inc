@@ -29,28 +29,26 @@ subroutine da_allocate_y_radar (iv, y)
       allocate (y % radar(1:y % nlocal(radar)))
       do n = 1, y % nlocal(radar)
          nlevels = iv%info(radar)%levels(n)
-         allocate (y % radar(n)%rv(1:nlevels))
-         allocate (y % radar(n)%rf(1:nlevels))
-         !This subroutine is only used for allocating ob%radar arrays.
-         !Retrieved observations are currently stored in
-         !iv%radar(:)%rrno, iv%radar(:)%rsno, iv%radar(:)%rgro, iv%radar(:)%rqvo,
-         !so the following allocation is not needed.
-         !allocate (y % radar(n)%rrn(1:nlevels))
-         !allocate (y % radar(n)%rsn(1:nlevels))
-         !allocate (y % radar(n)%rgr(1:nlevels))
-         !allocate (y % radar(n)%rqv(1:nlevels))
+         allocate (y % radar(n) % rv(1:nlevels))
+         allocate (y % radar(n) % rf(1:nlevels))
+	 if ( use_dualpol_radar ) then
+            allocate (y % radar(n) % zdr(1:nlevels))
+	    allocate (y % radar(n) % kdp(1:nlevels))
+	    allocate (y % radar(n) % cc(1:nlevels))
+         end if
 
          y % radar(n) % rv(1:nlevels)  = 0.0
          y % radar(n) % rf(1:nlevels)  = 0.0
-         !y % radar(n) % rrn(1:nlevels) = 0.0
-         !y % radar(n) % rsn(1:nlevels) = 0.0
-         !y % radar(n) % rgr(1:nlevels) = 0.0
-         !y % radar(n) % rqv(1:nlevels) = 0.0
+
+	 if ( use_dualpol_radar ) then
+             y % radar(n) % zdr(1:nlevels)  = 0.0
+             y % radar(n) % kdp(1:nlevels)  = 0.0
+	     y % radar(n) % cc(1:nlevels)   = 0.0
+	 end if
+
       end do
    end if
 
    if (trace_use) call da_trace_exit("da_allocate_y_radar")
 
 end subroutine da_allocate_y_radar
-
-

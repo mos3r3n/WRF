@@ -9,18 +9,19 @@ module da_radar
       max_stheight_diff,missing_data,max_error_bq,max_error_slp, &
       max_error_bt, max_error_buv, radar,fails_error_max, &
       use_radar_rv, use_radar_rf,radar_rf_opt,radar_rf_rscl,radar_rv_rscl,rf_noice,rfmin, rf_qthres, &
-      use_radar_rhv, use_radar_rqv, radar_rhv_opt,&
+      use_radar_rhv, use_radar_rqv, use_radar_rnr, transform_nr_opt, radar_rhv_opt, use_cv_nr, &
       below_model_surface,mkz,above_model_lid,&
       fg_format,fg_format_wrf_arw_regional,fg_format_wrf_nmm_regional,fg_format_wrf_arw_global,&
       fg_format_kma_global,max_error_rv,max_error_rf, &
       far_below_model_surface,kms,kme,kts,kte, trace_use_dull,filename_len,&
       myproc, analysis_date, num_procs , ierr, comm, es_beta, es_gamma, a_ew
+   use da_control, only : norain_hori_range, norain_vert_range, norain_fg_dbz_thre, norain_fg_rh_thre, norain_box_percent, norain_rh_reduce
    use da_control, only : its, ite, jts, jte, ids, ide, jds, jde, ims, ime, jms, jme, ips, ipe, jps, jpe, kds, kde
    use da_control, only : cloudbase_calc_opt, &
-      radar_non_precip_rf, radar_non_precip_opt, radar_rqv_thresh1, radar_rqv_thresh2, &
-      radar_rqv_rh1, radar_rqv_rh2, radar_non_precip_rh_w, radar_non_precip_rh_i, &
-      radar_rqv_h_lbound, radar_rqv_h_ubound, radar_saturated_rf, cloud_cv_options, &
-      radar_rhv_err_opt, radar_rhv_rrn_err, radar_rhv_rsn_err, radar_rhv_rgr_err
+      radar_non_precip_rf, radar_non_precip_opt, radar_rqv_thresh1, radar_rqv_thresh2, radar_rqv_thresh3, &
+      radar_rqv_rh1, radar_rqv_rh2, radar_rqv_rh3, radar_non_precip_rh_w, radar_non_precip_rh_i, &
+      radar_rqv_h_lbound, radar_rqv_h_ubound, cloud_cv_options, &
+      radar_rhv_err_opt, radar_rhv_rrn_err, radar_rhv_rsn_err, radar_rhv_rgr_err, radar_rhv_rnr_err
    use da_define_structures, only : maxmin_type, iv_type, y_type, jo_type, &
       bad_data_type, x_type, number_type, bad_data_type, &
       infa_type, field_type
@@ -32,6 +33,10 @@ module da_radar
    use da_tracing, only : da_trace_entry, da_trace_exit
    use da_reporting, only : da_error, da_warning, da_message, message
    use da_tools_serial, only : da_get_unit, da_free_unit
+#ifdef DM_PARALLEL
+   use da_control, only : root
+   use da_par_util1, only : true_mpi_real
+#endif
 
    ! The "stats_radar_type" is ONLY used locally in da_radar:
 
@@ -41,6 +46,7 @@ module da_radar
       real                    :: rrn
       real                    :: rsn
       real                    :: rgr
+      real                    :: rnr
       real                    :: rqv
    end type residual_radar1_type
 
@@ -50,6 +56,7 @@ module da_radar
       type (maxmin_type)         :: rrn
       type (maxmin_type)         :: rsn
       type (maxmin_type)         :: rgr
+      type (maxmin_type)         :: rnr
       type (maxmin_type)         :: rqv
    end type maxmin_radar_stats_type
 
@@ -60,6 +67,7 @@ module da_radar
 
    real, parameter :: leh1=43.1
    real, parameter :: leh2=17.5
+   real, parameter :: power_p=0.4
 
    real :: zlcl_mean  !model grid mean LCL
 
@@ -81,7 +89,8 @@ contains
 #include "da_max_error_qc_radar.inc"
 #include "da_write_oa_radar_ascii.inc"
 #include "da_radar_rf.inc"
-
+#include "da_radar_rf_2mom.inc"
+#include "da_cal_coef_wetsnow.inc"
 #include "da_radzicevar_calc_ice_abc.inc"
 #include "da_radzicevar_pkx.inc"
 #include "da_radzicevar_upper_f.inc"

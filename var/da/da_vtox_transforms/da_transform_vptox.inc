@@ -291,6 +291,21 @@ if ( jb_factor > 0.0 ) then
          enddo
       enddo
       !$OMP END PARALLEL DO
+      if ( use_cv_nr ) then
+         !qnrain
+         !$OMP PARALLEL DO &
+         !$OMP PRIVATE ( ij, i, j, k )
+         do ij = 1 , grid%num_tiles
+            do k = kts, kte
+               do j = grid%j_start(ij), grid%j_end(ij)
+                  do i = its, ite
+                     grid%xa % qnr(i,j,k) =  vp%v11(i,j,k)
+                  enddo
+               enddo
+            enddo
+         enddo
+         !$OMP END PARALLEL DO
+      end if
    end if ! cloud_cv_options>=2
 
    if ( use_cv_w ) then
@@ -301,7 +316,7 @@ if ( jb_factor > 0.0 ) then
          do k = kts, kte
             do j = grid%j_start(ij), grid%j_end(ij)
                do i = its, ite
-                  grid%xa % w(i,j,k) =  vp%v11(i,j,k)
+                  grid%xa % w(i,j,k) =  vp%v12(i,j,k)
                enddo
             enddo
          enddo
@@ -309,29 +324,6 @@ if ( jb_factor > 0.0 ) then
       !$OMP END PARALLEL DO
    end if ! use_cv_w
 end if ! jb_factor > 0.0
-
-!   !---------------------------------------------------------------------------
-!   !  [4] Add flow-dependent increments in model space (grid%xa):
-!   !---------------------------------------------------------------------------
-!
-!!  if (be % ne > 0 .and. alphacv_method == alphacv_method_xa) then
-!!     call da_add_flow_dependence_xa(grid, be % ne, ep, vp)
-!!  end if
-!   if (be % ne > 0 .and. alphacv_method == alphacv_method_xa) then
-!      if ( anal_type_hybrid_dual_res ) then
-!         if( present(nobwin) ) then
-!            call da_add_flow_dependence_xa_dual_res(grid, be % ne, ep, vp, nobwin)
-!         else
-!            call da_add_flow_dependence_xa_dual_res(grid, be % ne, ep, vp)
-!         end if
-!      else
-!         if( present(nobwin) ) then
-!            call da_add_flow_dependence_xa(grid, be % ne, ep, vp, nobwin)
-!         else
-!            call da_add_flow_dependence_xa(grid, be % ne, ep, vp)
-!         end if
-!      endif
-!   end if
 
    if (trace_use) call da_trace_exit("da_transform_vptox") 
  

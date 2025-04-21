@@ -35,15 +35,24 @@ subroutine da_calculate_grady_radar(iv, re, jo_grad_y)
                re%radar(n)%rrn(k) = 0.0
             end if
             jo_grad_y%radar(n)%rrn(k) = -re%radar(n)%rrn(k) / (iv%radar(n)%rrn(k)%error * iv%radar(n)%rrn(k)%error)
-            if (iv%radar(n)%rsn(k)%qc < obs_qc_pointer) then
+
+	    if (iv%radar(n)%rsn(k)%qc < obs_qc_pointer) then
                re%radar(n)%rsn(k) = 0.0
             end if
             jo_grad_y%radar(n)%rsn(k) = -re%radar(n)%rsn(k) / (iv%radar(n)%rsn(k)%error * iv%radar(n)%rsn(k)%error)
-            if (iv%radar(n)%rgr(k)%qc < obs_qc_pointer) then
+
+	    if (iv%radar(n)%rgr(k)%qc < obs_qc_pointer) then
                re%radar(n)%rgr(k) = 0.0
             end if
             jo_grad_y%radar(n)%rgr(k) = -re%radar(n)%rgr(k) / (iv%radar(n)%rgr(k)%error * iv%radar(n)%rgr(k)%error)
-         end if
+
+	    if (use_cv_nr .and. use_radar_rnr) then
+               if (iv%radar(n)%rnr(k)%qc < obs_qc_pointer) then
+                  re%radar(n)%rnr(k) = 0.0
+               end if
+               jo_grad_y%radar(n)%rnr(k) = -re%radar(n)%rnr(k) / (iv%radar(n)%rnr(k)%error * iv%radar(n)%rnr(k)%error)
+            end if
+      	 end if
 
          if (use_radar_rqv) then
             if (iv%radar(n)%rqv(k)%qc < obs_qc_pointer) then
